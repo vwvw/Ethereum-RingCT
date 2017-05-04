@@ -15,7 +15,7 @@ contract RingCT {
     Proposal[] proposals;
 
     /// Create a new ballot with $(_numProposals) different proposals.
-    function RingCT(uint8 _mixInNr, ) {
+    function RingCT(uint8 _mixInNr, uint8 amount) {
         chairperson = msg.sender;
         voters[chairperson].weight = 1;
         proposals.length = _numProposals;
