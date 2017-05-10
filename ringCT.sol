@@ -1,4 +1,8 @@
 pragma solidity ^0.4.0;
+
+import 'github.com/androlo/standard-contracts/contracts/src/crypto/Curve.sol';
+
+
 contract RingCT {
 
     event PrintString(address indexed _from, string _value);
@@ -13,10 +17,21 @@ contract RingCT {
     
     bytes32[] keyImagesUsed;
 
+    function test(string tester) {
+        PrintString(msg.sender, "-------------------");
+        PrintString(msg.sender, "We got a message:");
+        PrintString(msg.sender, tester);
+        PrintString(msg.sender, "-------------------");
+        // Curve x = Curve(2);
+        //uint[2] y= [1,2];
+        // x.onCurve(y);
+    }
+
 
 
     function verifyRing (bytes pubKeys, string m, bytes32 keyMatrix) returns (bool) {
         uint256 numberInput = keyMatrix.length;
+        
 
         if(pubKeys.length != numberInput) {
 
