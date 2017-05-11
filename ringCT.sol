@@ -1,11 +1,16 @@
 pragma solidity ^0.4.0;
 
 import 'github.com/androlo/standard-contracts/contracts/src/crypto/Curve.sol';
-
+import 'github.com/androlo/standard-contracts/contracts/src/crypto/ECCMath.sol';
+import 'github.com/androlo/standard-contracts/contracts/src/crypto/Secp256k1Curve.sol';
+import 'github.com/androlo/standard-contracts/contracts/src/crypto/Secp256k1.sol';
 
 contract RingCT {
 
     event PrintString(address indexed _from, string _value);
+    event PrintBool(address indexed _from, bool _value);
+    event PrintAddress(address indexed _from, address _value);
+    event PrintUint(address indexed _from, uint _value);
 
 
     int256 Gx = 55066263022277343669578718895168534326250603453777594175500187360389116729240;
@@ -17,14 +22,20 @@ contract RingCT {
     
     bytes32[] keyImagesUsed;
 
-    function test(string tester) {
+    function test(string tester) returns (bool) {
         PrintString(msg.sender, "-------------------");
-        PrintString(msg.sender, "We got a message:");
+        PrintString(msg.sender, "We got a nice message:");
         PrintString(msg.sender, tester);
+    
+        uint q = 1;
+        uint w = 2;
+        uint[2] memory y = [q, w];
+        bool re = Secp256k1.onCurve(y);
+        PrintBool(msg.sender, re);
+
+        uint r = ECCMath.invmod(q,w);
+        PrintUint(msg.sender, r);
         PrintString(msg.sender, "-------------------");
-        // Curve x = Curve(2);
-        //uint[2] y= [1,2];
-        // x.onCurve(y);
     }
 
 
