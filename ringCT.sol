@@ -85,22 +85,22 @@ contract RingCT {
         // and outputs true or false, depending on whether the signature verifies or not. 
         // For completeness, the MLSAG scheme must satisfy VER(SIGN(m,L,x),m,L)=true with overwhelming probability at security level k.
 
-        uint nbrRows = 1;
+        uint m = 1;
         uint nbrCols = 1;
-        uint[3][] L;
-        uint[3][] R;
         uint[] c;
         c.push(mg.cc);
         for(uint i = 0; i < nbrCols; i++) {
-            for(uint j = 0; j < nbrRows; j++) {
+            uint[3][] L;
+            uint[3][] R;
+            for(uint j = 0; j < m; j++) {
                 L.push(Secp256k1._add(Secp256k1._mul(mg.ss[i][j], G.key), Secp256k1._mul(c[i], km[i][j].key)));
                 R.push(Secp256k1._add(Secp256k1._mul(mg.ss[i][j], [uint(sha3(km[i][j].key[0])), uint(sha3(km[i][j].key[1]))]), Secp256k1._mul(c[i], mg.II[i].key)));
-                c.push(uint(sha256(messageString, L, R)));
             }
+            c.push(uint(sha256(messageString, L, R)));
         }
 
 
-        return false;
+        return c[0] == c[c.length];
     }
 
     // function verifyRing (Ring r) returns (bool) {
