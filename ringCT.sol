@@ -37,6 +37,7 @@ contract RingCT {
 
 
 
+    event LogErrorString(string _value);
     event PrintString(address indexed _from, string _value);
     event PrintBool(address indexed _from, bool _value);
     event PrintAddress(address indexed _from, address _value);
@@ -55,7 +56,7 @@ contract RingCT {
     bytes32[] keyImagesUsed;
 
     function test(string tester) returns (bool) {
-        PrintString(msg.sender, "-------------------");
+        LogErrorString("-------------------");
         PrintString(msg.sender, "We got a nice message:");
         PrintString(msg.sender, tester);
     
@@ -85,11 +86,18 @@ contract RingCT {
         // and outputs true or false, depending on whether the signature verifies or not. 
         // For completeness, the MLSAG scheme must satisfy VER(SIGN(m,L,x),m,L)=true with overwhelming probability at security level k.
 
-        uint m = 1;
-        uint nbrCols = 1;
+        if(mg.ss.length != km.length || mg.ss[0].length != km[0].length) {
+            LogErrorString("Mismatch in the dimension of the key matrix and the ss matrix in the signature");
+        }
+        if(mg.ss.length != mg.II.length) {
+            LogErrorString("Mismatch in the dimension of the II matrix and the ss matrix in the signature");
+        }
+
+        uint m = mg.ss.length;
+        uint n = mg.ss[0].length;
         uint[] c;
         c.push(mg.cc);
-        for(uint i = 0; i < nbrCols; i++) {
+        for(uint i = 0; i < n; i++) {
             uint[3][] L;
             uint[3][] R;
             for(uint j = 0; j < m; j++) {
