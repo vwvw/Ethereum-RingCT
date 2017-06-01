@@ -165,8 +165,29 @@ contract RingCT {
     // }
 
 
-    // function verifyRangeProofs (bytes32 rangeProofs) returns (bool) {
-    // }
+    function verifyRangeProofs (rangeSig rp, pubKey commitment) internal returns (bool result) {
+        uint[3] Ctmp;
+        Ctmp[0] = 0;
+        Ctmp[1] = 0;
+        Ctmp[2] = 0;
+
+        for(uint i = 0; i < 64; i++) {
+            Ctmp = Secp256k1._addMixed(Ctmp, rp.Ci[i].key);
+        }
+        ECCMath.toZ1(Ctmp, pp); // to Jacobian 
+        if(Ctmp[0] != commitment.key[0] || Ctmp[1] != commitment.key[1]) {
+            result = false;
+            return;
+        } else {
+            result = verifyBoromean(rp);
+            return;
+        }
+    }
+
+    function verifyBoromean (rangeSig rp) internal returns (bool result) {
+
+    }
+
 
     // function verify  (bytes32 keyImage, bytes pubKeys, string m, bytes32 keyMatrix, bytes32 rangeProofs) returns (bool){
     //     for(uint256 i = 0; i < keyImagesUsed.length; i++) {

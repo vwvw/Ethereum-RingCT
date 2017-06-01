@@ -19,3 +19,20 @@ admin.nodeInfo.enode
 #Connect both nodes by entering in one terminal, with the enode outputted by the previous function
 admin.addPeer("output of nodeInfo.enode")
 
+
+
+
+#generate priv and pub key example in hex
+openssl ecparam -name secp256k1 -genkey -noout | openssl ec -text -noout
+
+
+
+#secp
+git clone https://github.com/bitcoin-core/secp256k1.git
+./autogen.sh
+./configure --enable-module-ecdh --enable-experimental
+make
+./tests
+sudo make install  # optional
+
+pip3 install --no-binary secp256k1 secp256k1
