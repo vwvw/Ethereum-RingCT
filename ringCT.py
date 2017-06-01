@@ -11,27 +11,27 @@ def getPublicKeys(number):
 def pedersen(m, r):
 	return (pow(g,m,p)*pow(h,r,p))%p
 
-#Elliptic Curve Diffie Helman: encodes and decodes the amount b and mask a
-# where C= aG + bH    
+
 def ecdhEncode(mask, amount, receiverPk): 
 	sendPriv = PrivateKey()
 	recvPubKey = PublicKey(pubkey=receiverPk, raw=True)
-	sharedSecret = sendPriv.pubkey.ecdh(bytes.fromhex(bytes.hex(recvPubKey.serialize())[2:]))
+	sharedSecret = recvPubKey.ecdh(bytes.fromhex(sendPriv.serialize()))
 	print(bytes.hex(sharedSecret))
 	sharedKey = PrivateKey(privkey=sharedSecret, raw=True)
-	print(len(mask))
-	print(len(amount))
+	# print(len(mask))
+	# print(len(amount))
 	newMask = sharedKey.tweak_add(mask)
 	newAmount = sharedKey.tweak_add(amount)
-	return newMask, newAmount
- #    esk, rv.senderPk =  PaperWallet.skpkGen()
- #    sharedSec1 = MiniNero.cn_fast_hash(MiniNero.scalarmultKey(receiverPk, esk));
- #    sharedSec2 = MiniNero.cn_fast_hash(sharedSec1)
- #    #encode
- #    rv.mask = MiniNero.sc_add_keys(unmasked.mask, sharedSec1)
- #    rv.amount = MiniNero.sc_add_keys(unmasked.amount, sharedSec1)
- #    return rv
+	return newMask, newAmount, sendPriv.pubkey.serialize()
 
+def ecdhDecode(mask, amount, senderPk, receiverSk): 
+	priv = PrivateKey(privkey=receiverSk, raw=True)
+	sharedSecret = PublicKey(pubkey=senderPk, raw=True).ecdh(bytes.fromhex(priv.serialize()))
+	print(bytes.hex(sharedSecret))
+    #encode
+    # rv.mask = MiniNero.sc_sub_keys(masked.mask, sharedSec1)
+    # rv.amount = MiniNero.sc_sub_keys(masked.amount, sharedSec1)
+    # return rv
 
 
 def createTransaction(privateKey, publicKey, destinations, amounts, mixin):
@@ -78,9 +78,11 @@ pub2 = "040ccad48919d8f6a206a1ac7113c22db62aa744a0700762b70aa0284d474c0020302963
 pub3 = "049f742f925b554e2dc02e2da5cb9663ef810e9eefb30818b3c12bc26afb8dd7ba3461c0f7d2b997bf455973af308a71ed34ae415cfc946de84db3961db522e5d2"
 createTransaction(bytes.fromhex(pri), bytes.fromhex(pub), [bytes.fromhex(pub2), bytes.fromhex(pub3)], [1, 2], 2)
 
-newMask, newAmount = ecdhEncode(bytes.fromhex(pri),bytes.fromhex(pri),bytes.fromhex(pub2))
-print(bytes.hex(newMask))
-print(bytes.hex(newAmount))
+newMask, newAmount, sendPubKey = ecdhEncode(bytes.fromhex(pri),bytes.fromhex(pri),bytes.fromhex(pub))
+# print(bytes.hex(newMask))
+# print(bytes.hex(newAmount))
+
+ecdhDecode(newMask, newAmount, sendPubKey, bytes.fromhex(pri))
 
 
 
