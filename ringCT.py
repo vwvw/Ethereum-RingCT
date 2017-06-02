@@ -1,4 +1,6 @@
 from secp256k1 import * 
+import struct
+import random
 
 MAX_AMOUNT = 2**64;
 MAX_MIXIN = 100; 
@@ -16,23 +18,30 @@ def ecdhEncode(mask, amount, receiverPk):
 	sendPriv = PrivateKey()
 	recvPubKey = PublicKey(pubkey=receiverPk, raw=True)
 	sharedSecret = recvPubKey.ecdh(bytes.fromhex(sendPriv.serialize()))
-	print(bytes.hex(sharedSecret))
-	sharedKey = PrivateKey(privkey=sharedSecret, raw=True)
-	# print(len(mask))
-	# print(len(amount))
-	newMask = sharedKey.tweak_add(mask)
-	newAmount = sharedKey.tweak_add(amount)
+	sharedSecretInt = int.from_bytes(sharedSecret, byteorder='big')
+	#overlow ??
+	newMask = mask + sharedSecretInt
+	newAmount = amount + sharedSecretInt
 	return newMask, newAmount, sendPriv.pubkey.serialize()
 
 def ecdhDecode(mask, amount, senderPk, receiverSk): 
 	priv = PrivateKey(privkey=receiverSk, raw=True)
 	sharedSecret = PublicKey(pubkey=senderPk, raw=True).ecdh(bytes.fromhex(priv.serialize()))
-	print(bytes.hex(sharedSecret))
-    #encode
-    # rv.mask = MiniNero.sc_sub_keys(masked.mask, sharedSec1)
-    # rv.amount = MiniNero.sc_sub_keys(masked.amount, sharedSec1)
-    # return rv
+	sharedSecretInt = int.from_bytes(sharedSecret, byteorder='big')
+	newMask = mask - sharedSecretInt
+	newAmount = amount - sharedSecretInt
+	return newMask, newAmount
 
+def genMG(pubs, inSk, outSk, outPk, index):
+    #pubs is a matrix of ctkeys [P, C] 
+    #inSk is the keyvector of [x, mask] secret keys
+    #outMasks is a keyvector of masks for outputs
+    #outPk is a list of output ctkeys [P, C]
+    #index is secret index of where you are signing (integer)
+    #returns a list (mgsig) [ss, cc, II] where ss is keymatrix, cc is key, II is keyVector of keyimages
+
+    rows = len(pubs[0])
+    cols = len(pubs)
 
 def createTransaction(privateKey, publicKey, destinations, amounts, mixin):
 	if(mixin < 0 or mixin > MAX_MIXIN):
@@ -71,6 +80,15 @@ def createTransaction(privateKey, publicKey, destinations, amounts, mixin):
 
 
 
+	
+
+def test():
+	for i in range(0, 10):
+		x = random.randrange(21784719801723098712037190283701982371098273102873012873083917231287301287313289)
+		y = random.randrange(21784719801723098712037190283701982371098273102873012873083917231287301287313289)
+		newMask, newAmount, sendPubKey = ecdhEncode(x, y, bytes.fromhex(pub))
+		newX, newY = ecdhDecode(newMask, newAmount, sendPubKey, bytes.fromhex(pri))
+		assert newX == x and newY == y, "ECDH failed, x = %d, y = %d" % (x, y)
 
 pri = "07ca500a843616b48db3618aea3e9e1174dede9b4e94b95b2170182f632ad47c"
 pub = "0462abcca39e6dbe30ade7be2949239311162792bdb257f408ccd9eab65e18bc5bbcf8a3f08675bd792251a23d09a48a870644ba3923996cc5b5ec2d68043f3df3"
@@ -78,12 +96,12 @@ pub2 = "040ccad48919d8f6a206a1ac7113c22db62aa744a0700762b70aa0284d474c0020302963
 pub3 = "049f742f925b554e2dc02e2da5cb9663ef810e9eefb30818b3c12bc26afb8dd7ba3461c0f7d2b997bf455973af308a71ed34ae415cfc946de84db3961db522e5d2"
 createTransaction(bytes.fromhex(pri), bytes.fromhex(pub), [bytes.fromhex(pub2), bytes.fromhex(pub3)], [1, 2], 2)
 
-newMask, newAmount, sendPubKey = ecdhEncode(bytes.fromhex(pri),bytes.fromhex(pri),bytes.fromhex(pub))
+newMask, newAmount, sendPubKey = ecdhEncode(1,2,bytes.fromhex(pub))
 # print(bytes.hex(newMask))
 # print(bytes.hex(newAmount))
 
 ecdhDecode(newMask, newAmount, sendPubKey, bytes.fromhex(pri))
 
 
-
+test()
 
