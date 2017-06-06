@@ -5,6 +5,7 @@ import hashlib
 import binascii
 import ecdsa
 from ecdsa import SigningKey, VerifyingKey
+from six import b
 
 MAX_AMOUNT = 2**64;
 MAX_MIXIN = 100; 
@@ -19,6 +20,10 @@ def getPublicKeys(number):
 
 def hashPublicKey(pubK):
     return to_int_from_bytes(hashlib.sha256(pubK).digest())
+
+def hash_to_point(pubK):
+    g = SigningKey.generate(curve=crv)
+    return g.from_string(hashlib.sha256(pubK).digest(), curve=crv).verifying_key
 
 def to_32_bytes_number (val, endianness='big'):
     # see https://stackoverflow.com/questions/8730927/convert-python-long-int-to-fixed-size-byte-array/28057222
@@ -83,82 +88,110 @@ def prepareMG(pubsK, pubsC, inSk, outSk, outPk, outC, index):
 
     genMG("", matrix, sk, index)
 
-def list_pubK_object_to_bytes(list):
+def list_to_bytes(list):
     ret = list[0]
     for x in range(1, len(list)):
         ret += list[x]
     return ret
 
 def genMG(message, matrix, sk, index):
+
     m = len(matrix)
+    assert len(matrix) > 0, "No public key received."
     n = len(matrix[0])
-    print(n)
-    print(m)
+    assert len(matrix) == len(sk), "The number of secret key doesn't match the number of public key."
+
+    for i in range(0, m):
+        assert len(matrix[i]) == n, "Public key array is not rectangular."
+    assert n > 0, "No public key in the array."
+    assert index >= 0 and index < n, "Not a valid index."
+    
+
     message_bytes = bytes(message, 'UTF-8')
+
+    g = SigningKey.generate(curve=crv)
+
+    for i in range(0, m):
+        assert g.from_string(sk[i], curve=crv).verifying_key.to_sec(compressed=False) == matrix[i][index], "One secret key doesn't match the public key."
+
+    print("---- Done with sk check ----")
+
     alpha = [None for x in range(m)]
+    I = [None for x in range(m)]
+    ss = [[None for x in range(m)] for y in range(n)]
     
     L = [[None for x in range(m)] for y in range(n)] 
     R = [[None for x in range(m)] for y in range(n)] 
-    I = [None for x in range(m)]
+
 
     for j in range(0, m):
-        alpha[j] = to_32_bytes_number(random.randrange(P))
-        g = SigningKey.generate(curve=crv)
-        L[index][j] = g.from_string(alpha[j], curve=crv).to_string()
+        skJHashPub_point = hash_to_point(matrix[j][index]).pubkey.point * to_int_from_bytes(sk[j])
+        I[j] = VerifyingKey.from_public_point(skJHashPub_point, curve=crv).to_sec()
+ 
+        alpha[j] = to_32_bytes_number(random.randrange(crv.order))
+        L[index][j] = g.from_string(alpha[j], curve=crv).verifying_key.to_sec()
 
-        print(bytes.hex(sk[j]))
-        skJ = g.from_string((sk[j]), curve=crv)
-        print(hashPublicKey(matrix[index][j]))
-        print(sk[j])
-        skJHashPub = skJ.verifying_key.pubkey.point * hashPublicKey(matrix[index][j])
-        I[j] = VerifyingKey.from_public_point(skJHashPub, curve=crv).to_sec()
-        print(I[j])
-
-        alphaKey = g.from_string(alpha[j], curve=crv)
-        alphaHashPub = alphaKey.verifying_key.pubkey.point * hashPublicKey(matrix[index][j])
-        R[index][j] = VerifyingKey.from_public_point(alphaHashPub, curve=crv).to_sec()
+        alphaHashPub_point = hash_to_point(matrix[j][index]).pubkey.point * to_int_from_bytes(alpha[j])
+        R[index][j] = VerifyingKey.from_public_point(alphaHashPub_point, curve=crv).to_sec()
 
 
-    print(L[index])
-    print(R[index])
-    c_idx_1 = hashlib.sha3_256(message_bytes + list_pubK_object_to_bytes(L[index]) + list_pubK_object_to_bytes(R[index])).digest();
-    
-
-    print("----------------\n Good For me \n ***********")
+    c_idx_1 = hashlib.sha3_256(message_bytes + list_to_bytes(L[index]) + list_to_bytes(R[index])).digest()
 
 
-    ss = [[None for x in range(m)] for y in range(n)]
+
     c = c_idx_1
     c_0 = None
     for i in range(1, n): 
         idx = (index + i) % n
-        print(idx)
         for j in range(0, m):
-            ss[idx][j] = to_32_bytes_number(random.randrange(P))
+            ss[idx][j] = to_32_bytes_number(random.randrange(crv.order))
 
-            pubK = PublicKey(pubkey = matrix[index][j], raw = True).tweak_mul(c)
-            tmp = generator.tweak_mul(ss[idx][j])
-            tmp.combine([pubK.deserialize(pubK.serialize())])
-            L[idx][j] = tmp.serialize()
-            tmp = PrivateKey(privkey=bytes.fromhex(bytes.hex(ss[idx][j])), raw=True)
-            R[idx][j] = tmp.tweak_mul(hashPublicKey(matrix[index][j]))
-            c_I = I[j].tweak_mul(c)
-            x = PublicKey.combine(pubkeys=[c_I, R[idx][j]])
+            c_PubK = VerifyingKey.from_sec(matrix[j][idx], curve=crv).pubkey.point * to_int_from_bytes(c)
+            sj_G = g.from_string(ss[idx][j], curve=crv)
+            L_point = c_PubK + sj_G.verifying_key.pubkey.point
+            L[idx][j] = VerifyingKey.from_public_point(L_point, curve=crv).to_sec()
 
-        c = hashlib.sha3_256(message_bytes + list_pubK_object_to_bytes(L[idx]) + list_pubK_object_to_bytes(R[idx])).digest();
+
+            c_I = VerifyingKey.from_sec(I[j], curve=crv).pubkey.point * to_int_from_bytes(c)
+            R_point = hash_to_point(matrix[j][idx]).pubkey.point * to_int_from_bytes(ss[idx][j]) + c_I
+            R[idx][j] = VerifyingKey.from_public_point(R_point, curve=crv).to_sec()
+
+        c = hashlib.sha3_256(message_bytes + list_to_bytes(L[idx]) + list_to_bytes(R[idx])).digest();
         if idx == 0:
             c_0 = c
 
 
+    L_tmp = [None for x in range(m)]
+    R_tmp = [None for x in range(m)]
+
     for j in range(0, m):
-        ss[index][j] = to_32_bytes_number((to_int_from_bytes(alpha[j]) - to_int_from_bytes(c) * to_int_from_bytes(sk[j])) % to_int_from_bytes(bytes.fromhex(curveOrder)))
-        sjG = generator.tweak_mul(ss[index][j])
-        tmp2 = PublicKey(pubkey=matrix[index][j], raw=True)
-        cjPj = tmp2.tweak_mul(c)
-        sjG.combine([cjPj.deserialize(cjPj.serialize())])
-        print(bytes.hex(sjG.serialize()))
-        Lj = generator.tweak_mul(alpha[j])
-        print(bytes.hex(Lj.serialize()))
+        ss[index][j] = to_32_bytes_number((to_int_from_bytes(alpha[j]) - to_int_from_bytes(c) * to_int_from_bytes(sk[j])) % crv.order)
+
+        c_PubK = VerifyingKey.from_sec(matrix[j][index], curve=crv).pubkey.point * to_int_from_bytes(c)
+        sj_G = g.from_string(ss[index][j], curve=crv)
+        L_point = c_PubK + sj_G.verifying_key.pubkey.point
+        L_tmp[j] = VerifyingKey.from_public_point(L_point, curve=crv).to_sec()
+
+        c_I = VerifyingKey.from_sec(I[j], curve=crv).pubkey.point * to_int_from_bytes(c)
+        R_point = hash_to_point(matrix[j][index]).pubkey.point * to_int_from_bytes(ss[index][j]) + c_I
+        R_tmp[j] = VerifyingKey.from_public_point(R_point, curve=crv).to_sec()
+
+    # sanity check:
+    c_tmp = hashlib.sha3_256(message_bytes + list_to_bytes(L_tmp) + list_to_bytes(R_tmp)).digest()
+    assert L_tmp == L[index] and R_tmp == R[index] and c_tmp == c_idx_1, "Sanity check for computing ss[index] failed."
+
+    return I, c_0, ss
+
+def verifyMG(I, c_0, ss):
+    n = len(ss)
+    assert n > 0, "No ss in the ring signature. Length = 0."
+    m = len(ss[0])
+    for i in range(0, n):
+        assert len(ss[i]) == m, "Non rectangular ss in the ring signature."
+    assert m > 0, "No ss in the ring siganture. Length ss[0] = 0"
+    assert len(I) == len(ss[0]), "Not the same number of pubkey hash (I) as of secret (ss)."
+    
+
 
 def createTransaction(privateKey, publicKey, destinations, amounts, mixin):
     if(mixin < 0 or mixin > MAX_MIXIN):
@@ -201,8 +234,8 @@ def createTransaction(privateKey, publicKey, destinations, amounts, mixin):
 
 def test():
     for i in range(0, 10):
-        x = random.randrange(P)
-        y = random.randrange(P)
+        x = random.randrange(crv.order)
+        y = random.randrange(crv.order)
         newMask, newAmount, sendPubKey = ecdhEncode(x, y, bytes.fromhex(pub))
         newX, newY = ecdhDecode(newMask, newAmount, sendPubKey, bytes.fromhex(pri))
         assert newX == x and newY == y, "ECDH failed, x = %d, y = %d" % (x, y)
@@ -228,7 +261,7 @@ pub5 = "04da11a42320ae495014dd9c1c51d43d6c55ca51b7fe9ae3e1258e927e97f48be4e7a447
 
 # test()
 print(bytes.fromhex(pri4))
-genMG(message="hello", 
+genMG(message="hello2", 
     matrix=[[bytes.fromhex(pub2), bytes.fromhex(pub), bytes.fromhex(pub3)], [bytes.fromhex(pub3), bytes.fromhex(pub4), bytes.fromhex(pub5)]], 
-    sk=[bytes.fromhex(pri4), bytes.fromhex(pri)], index=1)
+    sk=[bytes.fromhex(pri), bytes.fromhex(pri4)], index=1)
 
