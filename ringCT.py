@@ -114,7 +114,7 @@ def genMG(message, matrix, sk, index):
     for i in range(0, m):
         assert g.from_string(sk[i], curve=crv).verifying_key.to_sec(compressed=False) == matrix[i][index], "One secret key doesn't match the public key."
 
-    print("---- Done with sk check ----")
+    print("------ Done with checking private key -------")
 
     alpha = [None for x in range(m)]
     I = [None for x in range(m)]
@@ -144,6 +144,7 @@ def genMG(message, matrix, sk, index):
     for i in range(1, n): 
         idx = (index + i) % n
         for j in range(0, m):
+            # assert ss[idx][j] == None, "Hmm sounds bad"
             ss[idx][j] = to_32_bytes_number(random.randrange(crv.order))
 
             c_PubK = VerifyingKey.from_sec(matrix[j][idx], curve=crv).pubkey.point * to_int_from_bytes(c)
@@ -157,7 +158,7 @@ def genMG(message, matrix, sk, index):
             R[idx][j] = VerifyingKey.from_public_point(R_point, curve=crv).to_sec()
 
         c = hashlib.sha3_256(message_bytes + list_to_bytes(L[idx]) + list_to_bytes(R[idx])).digest();
-        if idx == 0:
+        if idx == n-1:
             c_0 = c
 
 
@@ -179,10 +180,13 @@ def genMG(message, matrix, sk, index):
     # sanity check:
     c_tmp = hashlib.sha3_256(message_bytes + list_to_bytes(L_tmp) + list_to_bytes(R_tmp)).digest()
     assert L_tmp == L[index] and R_tmp == R[index] and c_tmp == c_idx_1, "Sanity check for computing ss[index] failed."
+    print("------ Done with generating the MLSAG -------")
 
+    assert verifyMG(message, matrix, I, c_0, ss), "Ring verification failed."
+    print("------ Done with verifying the MLSAG  -------")
     return I, c_0, ss
 
-def verifyMG(I, c_0, ss):
+def verifyMG(message, matrix, I, c_0, ss):
     n = len(ss)
     assert n > 0, "No ss in the ring signature. Length = 0."
     m = len(ss[0])
@@ -190,7 +194,33 @@ def verifyMG(I, c_0, ss):
         assert len(ss[i]) == m, "Non rectangular ss in the ring signature."
     assert m > 0, "No ss in the ring siganture. Length ss[0] = 0"
     assert len(I) == len(ss[0]), "Not the same number of pubkey hash (I) as of secret (ss)."
-    
+
+    message_bytes = bytes(message, 'UTF-8')
+
+    g = SigningKey.generate(curve=crv)
+
+    L = [[None for x in range(m)] for y in range(n)] 
+    R = [[None for x in range(m)] for y in range(n)] 
+
+    c = c_0
+    for idx in range(0, n): 
+        for j in range(0, m):
+            c_PubK = VerifyingKey.from_sec(matrix[j][idx], curve=crv).pubkey.point * to_int_from_bytes(c)
+            sj_G = g.from_string(ss[idx][j], curve=crv)
+            L_point = c_PubK + sj_G.verifying_key.pubkey.point
+            L[idx][j] = VerifyingKey.from_public_point(L_point, curve=crv).to_sec()
+            # print(old_L[idx][j])
+            # print(L[idx][j])
+
+            c_I = VerifyingKey.from_sec(I[j], curve=crv).pubkey.point * to_int_from_bytes(c)
+            R_point = hash_to_point(matrix[j][idx]).pubkey.point * to_int_from_bytes(ss[idx][j]) + c_I
+            R[idx][j] = VerifyingKey.from_public_point(R_point, curve=crv).to_sec()
+            # print(old_L[idx][j])
+            # print(L[idx][j])
+
+        c = hashlib.sha3_256(message_bytes + list_to_bytes(L[idx]) + list_to_bytes(R[idx])).digest();
+
+    return c == c_0
 
 
 def createTransaction(privateKey, publicKey, destinations, amounts, mixin):
@@ -261,7 +291,7 @@ pub5 = "04da11a42320ae495014dd9c1c51d43d6c55ca51b7fe9ae3e1258e927e97f48be4e7a447
 
 # test()
 print(bytes.fromhex(pri4))
-genMG(message="hello2", 
-    matrix=[[bytes.fromhex(pub2), bytes.fromhex(pub), bytes.fromhex(pub3)], [bytes.fromhex(pub3), bytes.fromhex(pub4), bytes.fromhex(pub5)]], 
-    sk=[bytes.fromhex(pri), bytes.fromhex(pri4)], index=1)
+matrix=[[bytes.fromhex(pub2), bytes.fromhex(pub), bytes.fromhex(pub3)], [bytes.fromhex(pub3), bytes.fromhex(pub4), bytes.fromhex(pub5)]]
 
+I, c_0, ss = genMG(message="hello2", matrix=matrix,
+    sk=[bytes.fromhex(pri), bytes.fromhex(pri4)], index=1)
