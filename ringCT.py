@@ -42,22 +42,22 @@ def pedersen(m, r):
 
 
 def ecdhEncode(mask, amount, receiverPk): 
-    sendPriv = SigningKey.generate(curve=crv)
+    g = SigningKey.generate(curve=crv)
+    secret = to_32_bytes_number(random.randrange(crv.order))
+    senderSk= g.from_string(secret, curve=crv)
+    senderPk = senderSk.verifying_key
     recvPubKey = VerifyingKey.from_sec(receiverPk, curve=crv)
-    # sharedSecret = recvPubKey.ecdh(bytes.fromhex(sendPriv.serialize()))
-    # sharedSecretInt = int.from_bytes(sharedSecret, byteorder='big')
+    to_hash = VerifyingKey.from_public_point(recvPubKey.pubkey.point * to_int_from_bytes(secret), curve=crv).to_sec()
+    sharedSecretInt = to_int_from_bytes(hashlib.sha256((to_hash)).digest())
     # #overlow ??
-    sharedSecretInt = 0
     newMask = mask + sharedSecretInt
     newAmount = amount + sharedSecretInt
-    return newMask, newAmount, sendPriv
+    return newMask, newAmount, senderPk.to_sec()
 
 def ecdhDecode(mask, amount, senderPk, receiverSk): 
-    priv = SigningKey.generate(curve=crv)
-    priv.from_string(receiverSk, curve=crv)
-    # sharedSecret = PublicKey(pubkey=senderPk, raw=True).ecdh(bytes.fromhex(priv.serialize()))
-    # sharedSecretInt = int.from_bytes(sharedSecret, byteorder='big')
-    sharedSecretInt = 0
+    sendPubKey = VerifyingKey.from_sec(senderPk, curve=crv)
+    to_hash = VerifyingKey.from_public_point(sendPubKey.pubkey.point * to_int_from_bytes(receiverSk), curve=crv).to_sec()
+    sharedSecretInt = to_int_from_bytes(hashlib.sha256((to_hash)).digest())
     newMask = mask - sharedSecretInt
     newAmount = amount - sharedSecretInt
     return newMask, newAmount
@@ -209,14 +209,10 @@ def verifyMG(message, matrix, I, c_0, ss):
             sj_G = g.from_string(ss[idx][j], curve=crv)
             L_point = c_PubK + sj_G.verifying_key.pubkey.point
             L[idx][j] = VerifyingKey.from_public_point(L_point, curve=crv).to_sec()
-            # print(old_L[idx][j])
-            # print(L[idx][j])
 
             c_I = VerifyingKey.from_sec(I[j], curve=crv).pubkey.point * to_int_from_bytes(c)
             R_point = hash_to_point(matrix[j][idx]).pubkey.point * to_int_from_bytes(ss[idx][j]) + c_I
             R[idx][j] = VerifyingKey.from_public_point(R_point, curve=crv).to_sec()
-            # print(old_L[idx][j])
-            # print(L[idx][j])
 
         c = hashlib.sha3_256(message_bytes + list_to_bytes(L[idx]) + list_to_bytes(R[idx])).digest();
 
@@ -224,26 +220,24 @@ def verifyMG(message, matrix, I, c_0, ss):
 
 
 def createTransaction(privateKey, publicKey, destinations, amounts, mixin):
-    if(mixin < 0 or mixin > MAX_MIXIN):
-        print("The number of ring participant should be between 0 and " + str(MAX_MIXIN) + "\n Aborting...")
-        return False
+    assert mixin < 0 or mixin > MAX_MIXIN, "The number of ring participant should be between 0 and " + str(MAX_MIXIN) + "\n Aborting..."
+
     try:
         privkey = PrivateKey(privkey=privateKey, raw=True)
         pubkey = privkey.pubkey;
-        assert pubkey.serialize() == PublicKey(pubkey=publicKey, raw=True).serialize()
-    except AssertionError:
-        print("Derived public key: " + bytes.hex(privkey.pubkey.serialize()))
-        print("Provied public key: " + bytes.hex(PublicKey(pubkey=publicKey, raw=True).serialize()))
-        print("The provided public key doesn't match the private key.\n Aborting...")
+        assert pubkey.serialize() == PublicKey(pubkey=publicKey, raw=True).serialize(), \
+            "Derived public key: " + bytes.hex(privkey.pubkey.serialize()) + "\n\
+            Provied public key: " + bytes.hex(PublicKey(pubkey=publicKey, raw=True).serialize()) + "\n\
+            The provided public key doesn't match the private key.\n Aborting..."
     except Exception:
         print("The private key is not in the right format.\n\
             The format is either a compressed key as a string of 33 hex or an uncompresed key as a string of 65 hex.\n\
             Aborting...")
         return False
 
-    if(len(destinations) != len(amounts) or mixin != len(amounts)):
-        print("The mixin number should match the number of outputs addresses and the number of outputs amounts.\n Aborting...")
-        return False
+    assert len(destinations) != len(amounts) or mixin != len(amounts), \
+        "The mixin number should match the number of outputs addresses and the number of outputs amounts.\n\
+        Aborting..."
 
     destPubKeys = []
     for i in range (0, len(destinations)):
@@ -254,10 +248,9 @@ def createTransaction(privateKey, publicKey, destinations, amounts, mixin):
                 The format is either a compressed key as a string of 33 hex or an uncompresed key as a string of 65 hex.\n\
                 Aborting...")
     for i in range (0, len(amounts)):
-        if(amounts[i] < 0 or amounts[i] > MAX_AMOUNT):
-            print("The amount #" + str(i) + " should be between 0 and " + str(MAX_AMOUNT) + "\n Aborting...")
-            return False
-
+        assert amounts[i] < 0 or amounts[i] > MAX_AMOUNT, \
+            "The amount #" + str(i) + " should be between 0 and " + str(MAX_AMOUNT) + "\n\
+            Aborting..."
 
 
     
@@ -273,6 +266,8 @@ def test():
     for i in range(0, 10):
         x = random.randrange(2**256)
         assert x == to_int_from_bytes(to_32_bytes_number(x)), "bytes <-> int conversion failed, x = %d" % (x)
+    
+
 pri = "07ca500a843616b48db3618aea3e9e1174dede9b4e94b95b2170182f632ad47c"
 pri4 = "79d3372ffd4278affd69313355d38c6d90d489e4ab0bbbef9589d7cc9559ab6d"
 pri5 = "00dff8928e99bda9bb83a377e09c8bf5d110c414fa65d771b7b84797709c7dd0b1"
@@ -283,14 +278,9 @@ pub4 = "04ef36c6d140e7970cc54c08e0e5d3173059ee6276dd0de99e09d10c49bd49e63c44e0a2
 pub5 = "04da11a42320ae495014dd9c1c51d43d6c55ca51b7fe9ae3e1258e927e97f48be4e7a4474c067154fdaa1c5b26dee555c3e649337605510cf9e1d5c1e657352e9c"
 # createTransaction(bytes.fromhex(pri), bytes.fromhex(pub), [bytes.fromhex(pub2), bytes.fromhex(pub3)], [1, 2], 2)
 
-# newMask, newAmount, sendPubKey = ecdhEncode(1,2,bytes.fromhex(pub))
-# print(bytes.hex(newMask))
-# print(bytes.hex(newAmount))
 
-# ecdhDecode(newMask, newAmount, sendPubKey, bytes.fromhex(pri))
+test()
 
-# test()
-print(bytes.fromhex(pri4))
 matrix=[[bytes.fromhex(pub2), bytes.fromhex(pub), bytes.fromhex(pub3)], [bytes.fromhex(pub3), bytes.fromhex(pub4), bytes.fromhex(pub5)]]
 
 I, c_0, ss = genMG(message="hello2", matrix=matrix,
