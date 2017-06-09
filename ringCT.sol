@@ -36,7 +36,6 @@ contract RingCT {
 
 
 
-
     event LogErrorString(string _value);
     event PrintString(address indexed _from, string _value);
     event PrintBool(address indexed _from, bool _value);
@@ -55,7 +54,7 @@ contract RingCT {
     
     bytes32[] keyImagesUsed;
 
-    function test(string tester) returns (bool) {
+    function test(string tester) returns (string) {
         LogErrorString("-------------------");
         PrintString(msg.sender, "We got a nice message:");
         PrintString(msg.sender, tester);
@@ -75,6 +74,32 @@ contract RingCT {
         uint r = ECCMath.invmod(q,w);
         PrintUint(msg.sender, uint(q2));
         PrintString(msg.sender, "-------------------");
+        return tester;
+    }
+
+    function testb(uint256 x, uint256 y, bytes32[2][] t) returns (bytes32) {
+//        if(x*y != t.length) {
+  //          LogErrorString("Mismatch in the dimension of the key matrix");
+    //    }
+        PrintString(msg.sender, "We got a nice message:");
+        pubKey[][] pk;
+        bytes32[2][] o;
+        for(uint i = 0; i < x; i++) {
+            for(uint j = 0; j < y; j++) {
+                o[i*y+j] = t[i*y+j];
+                pk[i][j] = helper(t[i*y+j]);
+            }
+        }
+        uint256[2] r = pk[0][0].key;
+        return bytes32(pk[0][0].key[0]);
+    }
+
+    function helper(bytes32[2] p) internal returns (pubKey) {
+        uint256 x = uint256(p[0]);
+        uint256 y = uint256(p[1]);
+        uint256[2] memory pp = [x, y];
+        return pubKey(pp);
+
     }
 
     function verifyMLSAG(bytes32 messageString, pubKey[][] km, mgSig mg) internal returns (bool) {
@@ -86,29 +111,29 @@ contract RingCT {
         // and outputs true or false, depending on whether the signature verifies or not. 
         // For completeness, the MLSAG scheme must satisfy VER(SIGN(m,L,x),m,L)=true with overwhelming probability at security level k.
 
-        if(mg.ss.length != km.length || mg.ss[0].length != km[0].length) {
-            LogErrorString("Mismatch in the dimension of the key matrix and the ss matrix in the signature");
-        }
-        if(mg.ss.length != mg.II.length) {
-            LogErrorString("Mismatch in the dimension of the II matrix and the ss matrix in the signature");
-        }
+        // if(mg.ss.length != km.length || mg.ss[0].length != km[0].length) {
+        //     LogErrorString("Mismatch in the dimension of the key matrix and the ss matrix in the signature");
+        // }
+        // if(mg.ss.length != mg.II.length) {
+        //     LogErrorString("Mismatch in the dimension of the II matrix and the ss matrix in the signature");
+        // }
 
-        uint m = mg.ss.length;
-        uint n = mg.ss[0].length;
-        uint[] c;
-        c.push(mg.cc);
-        for(uint i = 0; i < n; i++) {
-            uint[3][] L;
-            uint[3][] R;
-            for(uint j = 0; j < m; j++) {
-                L.push(Secp256k1._add(Secp256k1._mul(mg.ss[i][j], G.key), Secp256k1._mul(c[i], km[i][j].key)));
-                R.push(Secp256k1._add(Secp256k1._mul(mg.ss[i][j], [uint(sha3(km[i][j].key[0])), uint(sha3(km[i][j].key[1]))]), Secp256k1._mul(c[i], mg.II[i].key)));
-            }
-            c.push(uint(sha256(messageString, L, R)));
-        }
+        // uint m = mg.ss.length;
+        // uint n = mg.ss[0].length;
+        // uint[] c;
+        // c.push(mg.cc);
+        // for(uint i = 0; i < n; i++) {
+        //     uint[3][] L;
+        //     uint[3][] R;
+        //     for(uint j = 0; j < m; j++) {
+        //         L.push(Secp256k1._add(Secp256k1._mul(mg.ss[i][j], G.key), Secp256k1._mul(c[i], km[i][j].key)));
+        //         R.push(Secp256k1._add(Secp256k1._mul(mg.ss[i][j], [uint(sha3(km[i][j].key[0])), uint(sha3(km[i][j].key[1]))]), Secp256k1._mul(c[i], mg.II[i].key)));
+        //     }
+        //     c.push(uint(sha256(messageString, L, R)));
+        // }
 
 
-        return c[0] == c[c.length];
+        // return c[0] == c[c.length];
     }
 
     // function verifyRing (Ring r) returns (bool) {
@@ -166,22 +191,22 @@ contract RingCT {
 
 
     function verifyRangeProofs (rangeSig rp, pubKey commitment) internal returns (bool result) {
-        uint[3] Ctmp;
-        Ctmp[0] = 0;
-        Ctmp[1] = 0;
-        Ctmp[2] = 0;
+        // uint[3] Ctmp;
+        // Ctmp[0] = 0;
+        // Ctmp[1] = 0;
+        // Ctmp[2] = 0;
 
-        for(uint i = 0; i < 64; i++) {
-            Ctmp = Secp256k1._addMixed(Ctmp, rp.Ci[i].key);
-        }
-        ECCMath.toZ1(Ctmp, pp); // to Jacobian 
-        if(Ctmp[0] != commitment.key[0] || Ctmp[1] != commitment.key[1]) {
-            result = false;
-            return;
-        } else {
-            result = verifyBoromean(rp);
-            return;
-        }
+        // for(uint i = 0; i < 64; i++) {
+        //     Ctmp = Secp256k1._addMixed(Ctmp, rp.Ci[i].key);
+        // }
+        // ECCMath.toZ1(Ctmp, pp); // to Jacobian 
+        // if(Ctmp[0] != commitment.key[0] || Ctmp[1] != commitment.key[1]) {
+        //     result = false;
+        //     return;
+        // } else {
+        //     result = verifyBoromean(rp);
+        //     return;
+        // }
     }
 
     function verifyBoromean (rangeSig rp) internal returns (bool result) {

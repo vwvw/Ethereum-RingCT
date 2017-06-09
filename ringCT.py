@@ -6,6 +6,11 @@ import binascii
 import ecdsa
 from ecdsa import SigningKey, VerifyingKey
 from six import b
+import time
+
+
+from ethjsonrpc import EthJsonRpc
+from ethjsonrpc.constants import BLOCK_TAGS, BLOCK_TAG_EARLIEST, BLOCK_TAG_LATEST
 
 MAX_AMOUNT = 2**64;
 MAX_MIXIN = 100; 
@@ -40,6 +45,43 @@ def to_int_from_bytes(val, endianness= 'big'):
 def pedersen(m, r):
     return (pow(g,m,p)*pow(h,r,p))%p
 
+def call_test(pubkey):
+    c = EthJsonRpc('127.0.0.1', 8080)
+    print(c.net_version())
+    print(c.web3_clientVersion())
+    print(c.eth_gasPrice())
+    print(c.eth_blockNumber())
+    # u = c.eth_newFilter(from_block=BLOCK_TAG_EARLIEST, to_block=BLOCK_TAG_LATEST, address="0x9825beb049df6248bb44543bf1d82425b1a3d339", topics=[])
+    # print("-----u------")
+    # print(u)
+    # v = c.eth_newBlockFilter()
+    # print("v")
+    # print(v)
+    # ud = c.eth_getTransactionCount("0x0a101893f8b05723b88838e534d5939c18cbecba" ,'latest')
+    # print("ud")
+    # print(ud)
+    # ux = c.eth_getLogs(u)
+    # print(ux)
+
+    pubkeysAlligned = []
+    for i in range(0, len(pubkey)):
+        for j in range(0, len(pubkey[0])):
+            pk = VerifyingKey.from_sec(pubkey[i][j]).pubkey.point
+            pubkeysAlligned.append([to_32_bytes_number(pk.x()), to_32_bytes_number(pk.y())])
+
+
+
+    results = c.call("0x9825beb049df6248bb44543bf1d82425b1a3d339", 'testb(uint256,uint256,bytes32[2][])', [len(pubkey), len(pubkey[0]), pubkeysAlligned],  ['bytes32'])
+    print(results)
+    # print(pubkeysAlligned)
+    
+    # time.sleep(15)
+    # print("hh")
+    # uu = c.eth_getFilterLogs(u)
+    # print(uu)
+    # vv = c.eth_getFilterChanges(v)
+    # print("vv")
+    # print(vv)
 
 def ecdhEncode(mask, amount, receiverPk): 
     g = SigningKey.generate(curve=crv)
@@ -267,6 +309,8 @@ def test():
         x = random.randrange(2**256)
         assert x == to_int_from_bytes(to_32_bytes_number(x)), "bytes <-> int conversion failed, x = %d" % (x)
     
+    print("------  Entering the first test case. -------")
+    print("------  All test passed. Well done !  -------")
 
 pri = "07ca500a843616b48db3618aea3e9e1174dede9b4e94b95b2170182f632ad47c"
 pri4 = "79d3372ffd4278affd69313355d38c6d90d489e4ab0bbbef9589d7cc9559ab6d"
@@ -279,9 +323,10 @@ pub5 = "04da11a42320ae495014dd9c1c51d43d6c55ca51b7fe9ae3e1258e927e97f48be4e7a447
 # createTransaction(bytes.fromhex(pri), bytes.fromhex(pub), [bytes.fromhex(pub2), bytes.fromhex(pub3)], [1, 2], 2)
 
 
-test()
+# test()
 
 matrix=[[bytes.fromhex(pub2), bytes.fromhex(pub), bytes.fromhex(pub3)], [bytes.fromhex(pub3), bytes.fromhex(pub4), bytes.fromhex(pub5)]]
 
-I, c_0, ss = genMG(message="hello2", matrix=matrix,
-    sk=[bytes.fromhex(pri), bytes.fromhex(pri4)], index=1)
+# I, c_0, ss = genMG(message="hello2", matrix=matrix,
+#     sk=[bytes.fromhex(pri), bytes.fromhex(pri4)], index=1)
+call_test(matrix)
