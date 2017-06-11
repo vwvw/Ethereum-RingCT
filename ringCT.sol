@@ -37,10 +37,10 @@ contract RingCT {
 
 
     event LogErrorString(string _value);
-    event PrintString(address indexed _from, string _value);
-    event PrintBool(address indexed _from, bool _value);
-    event PrintAddress(address indexed _from, address _value);
-    event PrintUint(address indexed _from, uint _value);
+    event PrintString(string _value);
+    event PrintBool(bool _value);
+    event PrintAddress(address _value);
+    event PrintUint(uint _value);
 
 
     uint Gx = 55066263022277343669578718895168534326250603453777594175500187360389116729240;
@@ -54,55 +54,63 @@ contract RingCT {
     
     bytes32[] keyImagesUsed;
 
-    function test(string tester) returns (string) {
+    function test(string tester, string t2, uint256 x, bytes32[2][] y) returns (string, string, uint256, bytes32[2][]) {
         LogErrorString("-------------------");
-        PrintString(msg.sender, "We got a nice message:");
-        PrintString(msg.sender, tester);
+        PrintString("We got a nice message:");
+        PrintString(tester);
     
-        uint q = 51096430820870120307140539508814444545925245321148382543282986788786670374103;
-        uint w = 109585886259781532459003731753652036451736271709659651557868302973050866903014;
-        
-        bytes32 q2 = 0x70f78e12ca19e7ad5149e9e7aac89d472eba3eafda6dbd485d3c142e915b8cd7;
-        bytes32 w2 = 0xf24769e16ee2286f4bbe6f7f7d881a012cce9a00a914c8ec5d3fb8f645a027e7;
-        
 
-        uint256[2] memory y = [q, w];
-        pubKey memory h1 = pubKey(y);
-        bool re = Secp256k1.onCurve(h1.key);
-        PrintBool(msg.sender, re);
-
-        uint r = ECCMath.invmod(q,w);
-        PrintUint(msg.sender, uint(q2));
-        PrintString(msg.sender, "-------------------");
-        return tester;
+        PrintString("-------------------");
+        return (tester, t2, x, y);
     }
 
-    function testb(uint256 x, uint256 y, bytes32[2][] t) returns (bytes32) {
-//        if(x*y != t.length) {
-  //          LogErrorString("Mismatch in the dimension of the key matrix");
-    //    }
-        PrintString(msg.sender, "We got a nice message:");
+    function testb(string message, uint256 pkX, uint256 pkY, bytes32[2][] pkB, bytes32 c0, uint256 ssX, uint256 ssY, bytes32[] ssB, uint256 IIX, bytes32[2][] IIB) {
+        if(pkX*pkY != pkB.length) {
+           LogErrorString("Mismatch in the dimension of the key matrix");
+        }
+        PrintString(message);
+
+        pubKey[] II;
+        for(uint i = 0; i < IIX; i++) {
+            // II[i] = pubKeyConverter(IIB[i]);
+        }
+        // pubKey[][] memory pk;
+        //pk = convertPK(pkX, pkY, pkB);
+        // uint256[][] memory ss = convertSS(ssX, ssY,ssB);
+        // pubKey[][] memory pk = convertPK(pkX, pkY, pkB);
+        // mgSig memory mg = mgSig(convertSS(ssX, ssY,ssB), uint256(c0), II);
+        //hello();
+        // return true;//verifyMLSAG(message, convertPK(pkX, pkY, pkB), mg);
+    }
+
+    function convertPK(uint256 pkX, uint256 pkY, bytes32[2][] pkB) internal returns (pubKey[][]) {
         pubKey[][] pk;
-        bytes32[2][] o;
-        for(uint i = 0; i < x; i++) {
-            for(uint j = 0; j < y; j++) {
-                o[i*y+j] = t[i*y+j];
-                pk[i][j] = helper(t[i*y+j]);
+        for(uint i = 0; i < pkX; i++) {
+            for(uint j = 0; j < pkY; j++) {
+                pk[i][j] = pubKeyConverter(pkB[i * pkY + j]);
             }
         }
-        uint256[2] r = pk[0][0].key;
-        return bytes32(pk[0][0].key[0]);
+        return pk;
     }
 
-    function helper(bytes32[2] p) internal returns (pubKey) {
+    function convertSS(uint256 ssX, uint256 ssY, bytes32[] ssB) internal returns (uint256[][]) {
+        uint256[][] ss;
+        for(uint i = 0; i < ssX; i++) {
+            for(uint j = 0; j < ssY; j++) {
+                ss[i][j] = uint(ssB[i * ssY + j]);
+            }
+        }
+        return ss;
+    }
+
+    function pubKeyConverter(bytes32[2] p) internal returns (pubKey) {
         uint256 x = uint256(p[0]);
         uint256 y = uint256(p[1]);
         uint256[2] memory pp = [x, y];
         return pubKey(pp);
-
     }
 
-    function verifyMLSAG(bytes32 messageString, pubKey[][] km, mgSig mg) internal returns (bool) {
+    function verifyMLSAG(string messageString, pubKey[][] km, mgSig mg) internal returns (bool) {
         // VER: A polynomial time algorithm which takes as inputs 
         // a security parameter k,
         // a key matrix km, 
@@ -132,7 +140,7 @@ contract RingCT {
         //     c.push(uint(sha256(messageString, L, R)));
         // }
 
-
+        return true;
         // return c[0] == c[c.length];
     }
 

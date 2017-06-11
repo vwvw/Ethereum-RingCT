@@ -1,3 +1,5 @@
+
+
 from secp256k1 import * 
 import struct
 import random
@@ -18,6 +20,8 @@ crv=ecdsa.SECP256k1
 P = 2**256 - 2**32 - 2**9 - 2**8 - 2**7 - 2**6 - 2**4 - 1
 G = "0479BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8"
 curveOrder = "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141"
+
+# contractAddress = "0x05327439875c00b64da565362a93782edc264af0" 
 
 def getPublicKeys(number):
     # TODO
@@ -45,23 +49,33 @@ def to_int_from_bytes(val, endianness= 'big'):
 def pedersen(m, r):
     return (pow(g,m,p)*pow(h,r,p))%p
 
-def call_test(pubkey):
-    c = EthJsonRpc('127.0.0.1', 8080)
-    print(c.net_version())
-    print(c.web3_clientVersion())
-    print(c.eth_gasPrice())
-    print(c.eth_blockNumber())
-    # u = c.eth_newFilter(from_block=BLOCK_TAG_EARLIEST, to_block=BLOCK_TAG_LATEST, address="0x9825beb049df6248bb44543bf1d82425b1a3d339", topics=[])
-    # print("-----u------")
-    # print(u)
-    # v = c.eth_newBlockFilter()
-    # print("v")
-    # print(v)
-    # ud = c.eth_getTransactionCount("0x0a101893f8b05723b88838e534d5939c18cbecba" ,'latest')
-    # print("ud")
-    # print(ud)
-    # ux = c.eth_getLogs(u)
-    # print(ux)
+def call_test(message, pubkey, c0, ss, II):
+    connection = EthJsonRpc('127.0.0.1', 8080)
+
+    compiled = "60606040527f79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f817986000557f483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b860015560406040519081016040528060005481526020016001548152506002906002610076929190610120565b5060206040519081016040528060026002806020026040519081016040528092919082600280156100bc576020028201915b8154815260200190600101908083116100a8575b505050505081525060046000820151816000019060026100dd929190610160565b5050507ffffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f600655600560075560066008556007600955341561011b57fe5b6101c5565b826002810192821561014f579160200282015b8281111561014e578251825591602001919060010190610133565b5b50905061015c91906101a0565b5090565b826002810192821561018f579160200282015b8281111561018e578251825591602001919060010190610173565b5b50905061019c91906101a0565b5090565b6101c291905b808211156101be5760008160009055506001016101a6565b5090565b90565b610890806101d46000396000f30060606040526000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff1680637422d36414610046578063ecd31f60146102e9575bfe5b341561004e57fe5b610166600480803590602001908201803590602001908080601f0160208091040260200160405190810160405280939291908181526020018383808284378201915050505050509190803590602001908201803590602001908080601f016020809104026020016040519081016040528093929190818152602001838380828437820191505050505050919080359060200190919080359060200190820180359060200190808060200260200160405190810160405280939291908181526020016000905b82821015610158578484839050604002016002806020026040519081016040528092919082600260200280828437820191505050505081526020019060010190610113565b5050505050919050506104b5565b604051808060200180602001858152602001806020018481038452888181518152602001915080519060200190808383600083146101c3575b8051825260208311156101c35760208201915060208101905060208303925061019f565b505050905090810190601f1680156101ef5780820380516001836020036101000a031916815260200191505b50848103835287818151815260200191508051906020019080838360008314610237575b80518252602083111561023757602082019150602081019050602083039250610213565b505050905090810190601f1680156102635780820380516001836020036101000a031916815260200191505b508481038252858181518152602001915080516000925b818410156102d3578284906020019060200201516002602002808383600083146102c3575b8051825260208311156102c35760208201915060208101905060208303925061029f565b505050905001926001019261027a565b9250505097505050505050505060405180910390f35b34156102f157fe5b6104b3600480803590602001908201803590602001908080601f016020809104026020016040519081016040528093929190818152602001838380828437820191505050505050919080359060200190919080359060200190919080359060200190820180359060200190808060200260200160405190810160405280939291908181526020016000905b828210156103c157848483905060400201600280602002604051908101604052809291908260026020028082843782019150505050508152602001906001019061037c565b50505050509190803560001916906020019091908035906020019091908035906020019091908035906020019082018035906020019080806020026020016040519081016040528093929190818152602001838360200280828437820191505050505050919080359060200190919080359060200190820180359060200190808060200260200160405190810160405280939291908181526020016000905b828210156104a5578484839050604002016002806020026040519081016040528092919082600260200280828437820191505050505081526020019060010190610460565b5050505050919050506106c9565b005b6104bd61083c565b6104c561083c565b60006104cf610850565b7f551303dd5f39cbfe6daba6b3e27754b8a7d72f519756a2cde2b92c2bbde159a76040518080602001828103825260138152602001807f2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d0000000000000000000000000081525060200191505060405180910390a17f43123f7005ece31cd2478fa2cd0bec5ea2e353c1c3fe9ca390a6de2ab917eac96040518080602001828103825260168152602001807f576520676f742061206e696365206d6573736167653a0000000000000000000081525060200191505060405180910390a17f43123f7005ece31cd2478fa2cd0bec5ea2e353c1c3fe9ca390a6de2ab917eac9886040518080602001828103825283818151815260200191508051906020019080838360008314610610575b805182526020831115610610576020820191506020810190506020830392506105ec565b505050905090810190601f16801561063c5780820380516001836020036101000a031916815260200191505b509250505060405180910390a17f43123f7005ece31cd2478fa2cd0bec5ea2e353c1c3fe9ca390a6de2ab917eac96040518080602001828103825260138152602001807f2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d0000000000000000000000000081525060200191505060405180910390a18787878793509350935093505b945094509450949050565b6000600088518a8c02141515610768577f551303dd5f39cbfe6daba6b3e27754b8a7d72f519756a2cde2b92c2bbde159a760405180806020018281038252602b8152602001807f4d69736d6174636820696e207468652064696d656e73696f6e206f662074686581526020017f206b6579206d617472697800000000000000000000000000000000000000000081525060400191505060405180910390a15b7f43123f7005ece31cd2478fa2cd0bec5ea2e353c1c3fe9ca390a6de2ab917eac98c60405180806020018281038252838181518152602001915080519060200190808383600083146107d9575b8051825260208311156107d9576020820191506020810190506020830392506107b5565b505050905090810190601f1680156108055780820380516001836020036101000a031916815260200191505b509250505060405180910390a1600090505b8381101561082d575b8080600101915050610817565b5b505050505050505050505050565b602060405190810160405280600081525090565b6020604051908101604052806000815250905600a165627a7a723058209b01fb49c8cacd0d37b37a3e9e449c831487f7be7d5ccdae7bc6d71c719188810029"
+    blockNumber = connection.eth_blockNumber()
+    contract_tx = connection.create_contract(connection.eth_coinbase(), compiled, gas=300000)
+    print("tx " + contract_tx)
+    contract_addr = connection.eth_getTransactionReceipt(contract_tx)
+    while(contract_addr == None):
+        print("waiting")
+        time.sleep(0.5)
+        contract_addr = connection.eth_getTransactionReceipt(contract_tx)
+    contractAddress = connection.get_contract_address(contract_tx)
+    print("addre" + contractAddress)
+
+
+    logErrStringKeccak = connection.web3_sha3("LogErrorString(string)")
+    pStringKeccak = connection.web3_sha3("PrintString(string)")
+    pBoolKeccak = connection.web3_sha3("PrintBool(bool)")
+    pAddressKeccak = connection.web3_sha3("PrintAddress(address)")
+    pUintKeccak = connection.web3_sha3("PrintUint(uint)")
+
+    logErrFilter = connection.eth_newFilter(from_block='earliest', address=contractAddress, topics=[logErrStringKeccak])
+    pStringFilter = connection.eth_newFilter(from_block='earliest', address=contractAddress, topics=[pStringKeccak])
+    pBoolFilter = connection.eth_newFilter(from_block='earliest', address=contractAddress, topics=[pBoolKeccak])
+    pAddressFilter = connection.eth_newFilter(from_block='earliest', address=contractAddress, topics=[pAddressKeccak])
+    pUintFilter = connection.eth_newFilter(from_block='earliest', address=contractAddress, topics=[pUintKeccak])
 
     pubkeysAlligned = []
     for i in range(0, len(pubkey)):
@@ -69,19 +83,42 @@ def call_test(pubkey):
             pk = VerifyingKey.from_sec(pubkey[i][j]).pubkey.point
             pubkeysAlligned.append([to_32_bytes_number(pk.x()), to_32_bytes_number(pk.y())])
 
+    ssAlligned = []
+    for i in range(0, len(ss)):
+        for j in range(0, len(ss[0])):
+            ssAlligned.append(ss[i][j])
 
+    IIAlligned = []
+    for i in range(0, len(II)):
+        I = VerifyingKey.from_sec(II[i]).pubkey.point
+        IIAlligned.append([to_32_bytes_number(I.x()), to_32_bytes_number(I.y())])
 
-    results = c.call("0x9825beb049df6248bb44543bf1d82425b1a3d339", 'testb(uint256,uint256,bytes32[2][])', [len(pubkey), len(pubkey[0]), pubkeysAlligned],  ['bytes32'])
-    print(results)
-    # print(pubkeysAlligned)
-    
-    # time.sleep(15)
-    # print("hh")
-    # uu = c.eth_getFilterLogs(u)
-    # print(uu)
-    # vv = c.eth_getFilterChanges(v)
-    # print("vv")
-    # print(vv)
+    #function testb(string message, uint256 pkX, uint256 pkY, bytes32[2][] pkB, bytes32 c0, uint256 ssX, uint256 ssY, bytes32[] ssB, uint256 IIX, bytes32[2][] IIB) returns (bool)
+    results = connection.call_with_transaction(connection.eth_coinbase(), contractAddress, 
+        # function signature
+        'testb(string,uint256,uint256,bytes32[2][],bytes32,uint256,uint256,bytes32[],uint256,bytes32[2][])',\
+        [message,\
+        len(pubkey), len(pubkey[0]), pubkeysAlligned,\
+        c0,\
+        len(ss), len(ss[0]), ssAlligned, \
+        len(II), IIAlligned])
+
+    blockNumber = connection.eth_blockNumber()
+    print("------ Transaction sent, block #"+str(blockNumber).zfill(5)+" -------")
+
+    print("------ Waiting for transaction deploy -------")
+    while(connection.eth_blockNumber() == blockNumber):
+        time.sleep(0.5)
+    print("------  Waiting for code exececution. -------")
+    while(connection.eth_blockNumber() == blockNumber+1):
+        time.sleep(0.5)
+    pStringChange = connection.eth_getFilterChanges(pStringFilter)
+    if len(pStringChange) > 0:
+        print("Print string result:\n"+str(bytes.fromhex(pStringChange[0]["data"][2:].replace('00', ''))))
+    logErrChange = connection.eth_getFilterChanges(logErrFilter)
+    if len(logErrChange) > 0:
+        print("Log Error result:\n"+str(bytes.fromhex(logErrChange[0]["data"][2:].replace('00', ''))))
+
 
 def ecdhEncode(mask, amount, receiverPk): 
     g = SigningKey.generate(curve=crv)
@@ -312,6 +349,40 @@ def test():
     print("------  Entering the first test case. -------")
     print("------  All test passed. Well done !  -------")
 
+
+def test2():
+    c = EthJsonRpc('127.0.0.1', 8080)
+    print(c.net_version())
+    print(c.web3_clientVersion())
+    print(c.eth_gasPrice())
+    print(c.eth_blockNumber())
+    contractAddress = "0xa8b4b6546394a808e24a168de6c0a5ea227545b4" 
+    u = c.eth_newFilter(from_block='earliest', address=contractAddress, topics=[])
+            
+    print("-----u------")
+    print(u)
+
+ #function testb(string message, uint256 pkX, uint256 pkY, bytes32[2][] pkB, bytes32 c0, uint256 ssX, uint256 ssY, bytes32[] ssB, uint256 IIX, bytes32[2][] IIB) returns (bool)
+    results = c.call_with_transaction(c.eth_coinbase(), contractAddress, 
+        # function signature
+        'set_s(string)',\
+        ["hello"]
+        # ,['bool']\
+        ) #return type
+    bn = c.eth_blockNumber()
+    print(bn)
+    print(results)
+    while(c.eth_blockNumber() == bn):
+        print(c.eth_blockNumber())
+        print("waiting for deploy")
+        time.sleep(0.5)
+    while(c.eth_blockNumber() == bn+1):
+        print(c.eth_blockNumber())
+        print("waiting for event")
+        time.sleep(0.5)
+    vv = c.eth_getFilterChanges(u)
+    print("vv"+str(vv)+str(c.eth_blockNumber()))
+
 pri = "07ca500a843616b48db3618aea3e9e1174dede9b4e94b95b2170182f632ad47c"
 pri4 = "79d3372ffd4278affd69313355d38c6d90d489e4ab0bbbef9589d7cc9559ab6d"
 pri5 = "00dff8928e99bda9bb83a377e09c8bf5d110c414fa65d771b7b84797709c7dd0b1"
@@ -324,9 +395,12 @@ pub5 = "04da11a42320ae495014dd9c1c51d43d6c55ca51b7fe9ae3e1258e927e97f48be4e7a447
 
 
 # test()
-
+# test2()
 matrix=[[bytes.fromhex(pub2), bytes.fromhex(pub), bytes.fromhex(pub3)], [bytes.fromhex(pub3), bytes.fromhex(pub4), bytes.fromhex(pub5)]]
-
-# I, c_0, ss = genMG(message="hello2", matrix=matrix,
+# test2()
+# I, c_0, ss = genMG(message="hello2", matrix=matrix, \
 #     sk=[bytes.fromhex(pri), bytes.fromhex(pri4)], index=1)
-call_test(matrix)
+I = [b'\x02l:\x9e\xfce\xba\x89\x0e\xb3\x08m-\x89\xa6\xa1\x0c\xafM\xbe\xc5\x86\xf3_c\xafj\xfaCw\xa5j\xf8', b'\x03\x94\xda\xdcp0t\xbb\x98J\xb8\xb8\x92\xa7A\x81u\"\xb0\x91M\x14\xc5\x0b\xb7\t\x1c\xc1\xdfVpL\xd1']
+c_0 = b'Q\xbc)=\xc8[\x9c\xec\xf3\x0c\xdf\xc4%\x98\x10\x1b}\xc9\xaf\x98J/\x14\x12\xb6k\xb2H\x88e\x9b\x89'
+ss= [[b";\xa6\x1a=i\xab\xdcY\xac\x80\xe3q\x12\xaf\x02\xbdh\xc6-'\x90\x7f\x95Lkz\xcb\x9d\x95\xe9\xd1E", b'\x13\xe1\x7f1s\xb6Z\xe8\xf7\x1d\x06\x85)\xe7\xdd\xbc:\x9a\xff\x07\x82\xa8\x88gRT\x15j\xb9\xb8\xfa\xb4'], [b'\x81_K\xdc\xc7=\x90f\xb1\xdb\xd5\x0f\x1a\xfc\xe1\x06]@\xab%\xd6\xea\\rSF\xdal\xe6o\x92`', b'/\x7f\x87\xa3n\xb1\x99+\x19\xdb\x17\xd3:,\x15\xa9\x9e!\x8b6\x87(rK\xc7\x89\xb3\x9c;\xed3\xb1'], [b'e\x0b\xa1\x131z\xf0`\x80\x81e\xa5\x1a\x1b\x142\xbf\xc8g;}\x99\x0ed\xf8\x91\xb6\xd7x\xccu\xcc', b'Yv(\xef\x1d\xfa\xa2\xea\xb2\x88:\xecwS\xe2\xdbt\xdf\x19\xc7",\xdc\xe9B\xdd`\xf2\xce\xd2\x88\x91']]
+call_test("hello3", matrix, c_0, ss, I)
