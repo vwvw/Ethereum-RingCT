@@ -20,7 +20,7 @@ G = "0479BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798483ADA772
 curveOrder = "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141"
 
 connection = EthJsonRpc('127.0.0.1', 8545)
-contractAddress = "0x5d198eb1406a1a2bf3e57b28b6b581faeb8e6efa" 
+contractAddress = "0xc61c27775265a1e7cecf56583e7337ca5c0df9bf" 
 
 def getPublicKeys(number):
     # TODO
@@ -79,19 +79,15 @@ def pedersen(m, r):
 
 def send_ring(message, pubkey, c0, ss, II):
     print("------ Preparing to send transaction  -------")
+    filterNames = ['Log Error', 'Print string', 'Print bool', 'Print address', 'Print uint256']
+    to_keccack = ["LogErrorString(string)", "PrintString(string)", "PrintBool(bool)", "PrintAddress(address)", "PrintUint(uint256)"]
+    keccack = []
+    for i in range(0, len(to_keccack)):
+        keccack.append(connection.web3_sha3(to_keccack[i]))
 
-
-    logErrStringKeccak = connection.web3_sha3("LogErrorString(string)")
-    pStringKeccak = connection.web3_sha3("PrintString(string)")
-    pBoolKeccak = connection.web3_sha3("PrintBool(bool)")
-    pAddressKeccak = connection.web3_sha3("PrintAddress(address)")
-    pUintKeccak = connection.web3_sha3("PrintUint(uint256)")
-    f =connection.eth_newFilter(from_block='earliest', address=contractAddress, topics=[])
-    logErrFilter = connection.eth_newFilter(from_block='earliest', address=contractAddress, topics=[logErrStringKeccak])
-    pStringFilter = connection.eth_newFilter(from_block='earliest', address=contractAddress, topics=[pStringKeccak])
-    pBoolFilter = connection.eth_newFilter(from_block='earliest', address=contractAddress, topics=[pBoolKeccak])
-    pAddressFilter = connection.eth_newFilter(from_block='earliest', address=contractAddress, topics=[pAddressKeccak])
-    pUintFilter = connection.eth_newFilter(from_block='earliest', address=contractAddress, topics=[pUintKeccak])
+    filter = []
+    for i in range(0, len(keccack)):
+        filter.append(connection.eth_newFilter(from_block='earliest', address=contractAddress, topics=[keccack[i]]))
 
     pubkeysAlligned = []
     for i in range(0, len(pubkey)):
@@ -122,18 +118,12 @@ def send_ring(message, pubkey, c0, ss, II):
     print("------Transaction sent, waiting events-------")
     time.sleep(5)
 
-    pStringChange = connection.eth_getFilterChanges(pStringFilter)
-    if len(pStringChange) > 0:
-        for i in range(0, len(pStringChange)):
-            print("Print string result " + str(i) + ":\n" + str(bytes.fromhex(pStringChange[i]["data"][2:].replace('00', ''))))
-    logErrChange = connection.eth_getFilterChanges(logErrFilter)
-    if len(logErrChange) > 0:
-        for i in range(0, len(logErrChange)):
-            print("Log Error result " + str(i) + ":\n" + str(bytes.fromhex(logErrChange[i]["data"][2:].replace('00', ''))))
-    pUintChange = connection.eth_getFilterChanges(pUintFilter)
-    if len(pUintChange) > 0:
-        for i in range(0, len(pUintChange)):
-            print("Print uint256 result " + str(i) + ":\n" + str(bytes.fromhex(pUintChange[i]["data"][2:].replace('00', ''))))
+    for i in range(0, len(filter)):
+        change = connection.eth_getFilterChanges(filter[i])
+        if len(change) > 0:
+            for j in range(0, len(change)):
+                print(filterNames[i] + " result " + str(j) + ":\n" + str(bytes.fromhex(change[j]["data"][2:].replace('00', ''))))
+
     print("------ All events have benn displayed -------")
 
 
