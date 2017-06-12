@@ -40,7 +40,7 @@ contract RingCT {
     event PrintString(string _value);
     event PrintBool(bool _value);
     event PrintAddress(address _value);
-    event PrintUint(uint _value);
+    event PrintUint(uint256 _value);
 
 
     uint Gx = 55066263022277343669578718895168534326250603453777594175500187360389116729240;
@@ -70,46 +70,43 @@ contract RingCT {
         }
         PrintString(message);
 
-        pubKey[] II;
+        pubKey[] memory II;
         for(uint i = 0; i < IIX; i++) {
             II[i] = pubKeyConverter(IIB[i]);
         }
-        pubKey[][] memory pk;
+        // pubKey[][] memory pk;
         PrintUint(pkX);
         PrintUint(pkY);
         PrintUint(ssX);
         PrintUint(ssY);
         //pk = convertPK(pkX, pkY, pkB);
-        //uint256[][] memory ss = convertSS(ssX, ssY,ssB);
-        // pubKey[][] memory pk = convertPK(pkX, pkY, pkB);
+        uint256[100] memory ss = convertSS(ssB);
+        pubKey[100] memory pk = convertPK(pkB);
         // mgSig memory mg = mgSig(convertSS(ssX, ssY,ssB), uint256(c0), II);
         hello(pkX, pkY, pkB);
         // return true;//verifyMLSAG(message, convertPK(pkX, pkY, pkB), mg);
     }
 
-    function convertPK(uint256 pkX, uint256 pkY, bytes32[2][] pkB) internal returns (pubKey[][]) {
-        PrintUint(pkX);
-        pubKey[][] pk;
-        for(uint i = 0; i < pkX; i++) {
-            for(uint j = 0; j < pkY; j++) {
-                //pk[i][j] = pubKeyConverter(pkB[i * pkY + j]);
-            }
+    function convertPK(bytes32[2][] pkB) internal returns (pubKey[100]) {
+        // assert(pkB.length) < 100);
+        pubKey[100] memory pk;
+        for(uint i = 0; i < pkB.length; i++) {
+            pk[i] = pubKeyConverter(pkB[i]);
         }
         return pk;
     }
 
-    function convertSS(uint256 ssX, uint256 ssY, bytes32[] ssB) internal returns (uint256[][]) {
-        uint256[][] ss;
-        for(uint i = 0; i < ssX; i++) {
-            for(uint j = 0; j < ssY; j++) {
-                ss[i][j] = uint(ssB[i * ssY + j]);
-            }
+    function convertSS(bytes32[] ssB) internal returns (uint256[100]) {
+        // assert(ssB.length) < 100);
+        uint256[100] memory ss;
+        for(uint i = 0; i < ssB.length; i++) {
+            ss[i] = uint(ssB[i]);
         }
         return ss;
     }
     function hello(uint256 pkX, uint256 pkY, bytes32[2][] pkB) internal returns(pubKey[100]) {
-        PrintString("hallO");
-        pubKey[100] pk;
+        PrintString("AAAAAA");
+        pubKey[100] memory pk;
         for(uint i = 0; i < pkX; i++) {
             for(uint j = 0; j < pkY; j++) {
                 pk[i*pkY+j] = pubKeyConverter(pkB[i * pkY + j]);
@@ -213,7 +210,7 @@ contract RingCT {
     // }
 
 
-    function verifyRangeProofs (rangeSig rp, pubKey commitment) internal returns (bool result) {
+    // function verifyRangeProofs (rangeSig rp, pubKey commitment) internal returns (bool result) {
         // uint[3] Ctmp;
         // Ctmp[0] = 0;
         // Ctmp[1] = 0;
@@ -230,11 +227,11 @@ contract RingCT {
         //     result = verifyBoromean(rp);
         //     return;
         // }
-    }
+    // }
 
-    function verifyBoromean (rangeSig rp) internal returns (bool result) {
+    // function verifyBoromean (rangeSig rp) internal returns (bool result) {
 
-    }
+    // }
 
 
     // function verify  (bytes32 keyImage, bytes pubKeys, string m, bytes32 keyMatrix, bytes32 rangeProofs) returns (bool){
