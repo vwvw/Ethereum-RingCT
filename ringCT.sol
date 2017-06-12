@@ -19,9 +19,9 @@ contract RingCT {
     //just contains the necessary keys to represent MLSAG sigs
     //c.f. http://eprint.iacr.org/2015/1098
     struct mgSig {
-        uint256[][] ss; // m x n matrix, scalar
+        uint256[100] ss; // m x n matrix, scalar
         uint256 cc; // c1, scalar
-        pubKey[] II; // m x 1
+        pubKey[100] II; // m x 1
     }
     
     struct rangeSig {
@@ -70,21 +70,13 @@ contract RingCT {
         }
         PrintString(message);
 
-        pubKey[] memory II;
+        pubKey[100] memory II;
         for(uint i = 0; i < IIX; i++) {
             II[i] = pubKeyConverter(IIB[i]);
         }
-        // pubKey[][] memory pk;
-        PrintUint(pkX);
-        PrintUint(pkY);
-        PrintUint(ssX);
-        PrintUint(ssY);
-        //pk = convertPK(pkX, pkY, pkB);
-        uint256[100] memory ss = convertSS(ssB);
-        pubKey[100] memory pk = convertPK(pkB);
-        // mgSig memory mg = mgSig(convertSS(ssX, ssY,ssB), uint256(c0), II);
-        hello(pkX, pkY, pkB);
-        // return true;//verifyMLSAG(message, convertPK(pkX, pkY, pkB), mg);
+        mgSig memory mg = mgSig(convertSS(ssB), uint256(c0), II);
+        PrintUint(mg.cc);
+        PrintBool(verifyMLSAG(message, convertPK(pkB), mg));
     }
 
     function convertPK(bytes32[2][] pkB) internal returns (pubKey[100]) {
@@ -104,16 +96,6 @@ contract RingCT {
         }
         return ss;
     }
-    function hello(uint256 pkX, uint256 pkY, bytes32[2][] pkB) internal returns(pubKey[100]) {
-        PrintString("AAAAAA");
-        pubKey[100] memory pk;
-        for(uint i = 0; i < pkX; i++) {
-            for(uint j = 0; j < pkY; j++) {
-                pk[i*pkY+j] = pubKeyConverter(pkB[i * pkY + j]);
-            }
-        }
-        return pk;
-    }
 
     function pubKeyConverter(bytes32[2] p) internal returns (pubKey) {
         uint256 x = uint256(p[0]);
@@ -122,7 +104,7 @@ contract RingCT {
         return pubKey(pp);
     }
 
-    function verifyMLSAG(string messageString, pubKey[][] km, mgSig mg) internal returns (bool) {
+    function verifyMLSAG(string messageString, pubKey[100] km, mgSig mg) internal returns (bool) {
         // VER: A polynomial time algorithm which takes as inputs 
         // a security parameter k,
         // a key matrix km, 
