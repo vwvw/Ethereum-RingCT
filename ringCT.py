@@ -54,6 +54,12 @@ def to_hex_list_list(list):
         l.append(ll)
     return l
 
+def add_2_32b(a, b):
+    return to_32_bytes_number((to_int_from_bytes(a) + to_int_from_bytes(b)) % crv.order)
+
+def sub_2_32b(a, b):
+    return to_32_bytes_number((to_int_from_bytes(a) - to_int_from_bytes(b)) % crv.order)
+
 def to_hex_list(list):
     l = []
     for i in range(0, len(list)):
@@ -168,28 +174,105 @@ def ecdhDecode(mask, amount, senderPk, receiverSk):
     newAmount = (to_int_from_bytes(amount) - sharedSecretInt) % crv.order
     return to_32_bytes_number(newMask), to_32_bytes_number(newAmount)
 
-def prepareMG(pubsK, pubsC, inSk, outSk, outPk, outC, index):
-    #pubs is a matrix of ctkeys [P, C] 
-    #inSk is the keyvector of [x, mask] secret keys
-    #outMasks is a keyvector of masks for outputs
-    #outPk is a list of output ctkeys [P, C]
-    #index is secret index of where you are signing (integer)
-    #returns a list (mgsig) [ss, cc, II] where ss is keymatrix, cc is key, II is keyVector of keyimages
 
-    rowsQ = len(pubs)
-    colsM = len(pubs[0])
+def createTransaction(publicKey, privateKey, destinations, amounts, mixin):
+    # publicKey: vector of public keys corresponding to the owner inputs(sec format)
+    # privateKey: vector of private keys corresponding to the public keys (format 32bytes number aka to_string() output)
+    # destinations: vector of public keys (sec format)
+    # amounts: vector of the different amounts going to the respective destinations public keys (int)
+    # mixin: the number of pk to get involved in the rings (int)
+    ## return: destinations: a vector of destiantions public keys as received (sec format)
+    ##         destinationsCommitment: a vector of commitment assigned to each destinations public keys (32 bytes numbers)
+    ##         I: part of MLSAG, a vector of pk in sec format corresponding the the sha256 hash of the sender pk 
+    ##         c_0: part of MLSAG, first sha3_256 (keccak) of the consecutive series of the MLSAG 
+    ##         ss: part of MLSAG, a matrix of "random" 32 bytes number
+    ##         infos: an array of ecdhEncode result containing the amount paid to the corresponding output pk
+    ##         rangeSig: vector of rangeSig (format TODO)
 
-    matrix = [[0 for x in range(colsM + 1)] for y in range(rowsQ)]
+    assert mixin < MAX_MIXIN and mixin > 0, "The number of ring participant should be between 0 and " + str(MAX_MIXIN) + "\n Aborting..."
+    assert len(privateKey) == len(publicKey), "The number of private key doesn't match the number of public key"
+    assert len(destinations) == len(amounts), \
+        "The number of outputs addresses should match the number of outputs amounts.\n\
+        Aborting..."
+    outNum = len(amounts)
+    for i in range (0, outNum):
+        assert amounts[i] > 0 and amounts[i] < MAX_AMOUNT, \
+            "The amount #" + str(i) + " should be between 0 and " + str(MAX_AMOUNT) + "\n\
+            Aborting..."
+
+    m = len(privateKey)
+    g = SigningKey.generate(curve=crv)
+
+
+    for i in range(0, m):
+        assert g.from_string(privateKey[i], curve=crv).verifying_key.to_sec(compressed=False) == publicKey[i], "One secret key doesn't match the public key."
+
+        # print("The private key is not in the right format.\n\
+            # The format is either a compressed key as a string of 33 hex or an uncompresed key as a string of 65 hex.\n\
+            # Aborting...")
+    inSkMasks = [] 
+    inPkMasks = [] 
+    for i in range(0,m):
+        secret = to_32_bytes_number(random.randrange(crv.order))
+        inSkMasks.append(secret)
+        inPkMasks.append(g.from_string(secret, curve=crv).verifying_key.to_string())
+
+
+    destinationsCommitment = []
+    infos = []
+    rangeSig = []
+    outSkMasks = []
+    for i in range(0, outNum):
+
+        outCommit, outSkMask, rg = proveRange(amounts[i])
+        destinationsCommitment.append(outCommit)
+        outSkMasks.append(outSkMask)
+        rangeSig.append(rg)
+        hiddenMask, hiddenAmount, senderPk = ecdhEncode(outSkMask, to_32_bytes_number(amounts[i]), destinations[i])
+        infos.append([hiddenMask, hiddenAmount, senderPk])
+
+    pkMatrix, pkMasksMatrix, index = populateFromBlockchain(publicKey, inPkMasks, mixin)
+
+    I, c_0, ss = prepareMG(pkMatrix, pkMasksMatrix, privateKey, inSkMasks, destinations, destinationsCommitment, outSkMasks, index)
+
+    return destinations, destinationsCommitment, I, c_0, ss, infos, rangeSig
+
+def prepareMG(pubsK, pubsC, inSk, inSkMask, outPk, outC, outSkMasks, index):
+    # pubsK: matrix of public key (size: qxm, sec format)
+    # pubsC: matrix of commitment for pk (size: qxm, 32bytes)
+    # inSk: vector of private key (size: m, bytes32 format)
+    # inSkMask: vector of mask for the corresponding sk (size: m, 32bytes)
+    # outPk: vector of public key to be paid (size: outPKsize, sec format)
+    # outC: vector of commitment for pk (hidden amount) (size: outPKsize, 32bytes)
+    # outSkMasks: vector TOODO no idea (bytes32)
+    # index: index of where in the pubsK matrix our pks are located
+
+    rowsQ = len(pubsK)
+    assert len(pubsK) == len(pubsC) and len(pubsK) > 0, "Mismatch in the number of public commitment and keys"
+    colsM = len(pubsK[0])
+    assert len(inSk) == len(inSkMask) and len(inSk) == colsM, "Mismatch in the number of private keys or private key masks"
+    for i in range(0, rowsQ): 
+        assert len(pubsK[i]) == len(pubsC[i]) and len(pubsK[i]) == colsM, "Mismatch in the number of public commitment and keys"
+    assert index >= 0 and index < rowsQ, "index: " + str(index) + " should be between 0 and " + str(rowsQ) + " (the number of public key)"
+    assert len(outPk) == len(outC) and len(outPk) == len(outSkMasks) and len(outPk) > 0, "Mismatch in the number of private commitment and keys"
+
+
+    bytes0 = to_32_bytes_number(0)
+    matrix = [[bytes0 for x in range(colsM + 1)] for y in range(rowsQ)]
+    sk = [bytes0 for x in range(colsM + 1)]
     sumCOut = 0
-    for i in range(rowsQ):
-        sumCOut += outC[i]
-    for i in range(rowsQ):
-        for j in range(colsM):
-            matrix[i][j] = pubsK[i][j]
+    for i in range(colsM):
+        sk[i] = inSk[i]
 
-        matrix[i][colsM]  = -sumCOut
-        for j in range(colsM):
-            matrix[i][colsM]  += pubsC[1][j]
+        sk[colsM] = add_2_32b(sk[colsM], inSkMask[i])
+        for j in range(rowsQ):
+            matrix[j][i] = pubsK[j][i]
+            matrix[j][colsM] = add_2_32b(matrix[j][colsM], pubsC[j][i])
+
+    for i in range(len(outC)):
+        sk[colsM] = sub_2_32b(sk[colsM], outSkMasks[i])
+        for j in range(rowsQ):
+            matrix[j][colsM] = sub_2_32b(matrix[j][colsM], outC[i])
 
     #TODO message
 
@@ -219,7 +302,7 @@ def genMG(message, matrix, sk, index):
     g = SigningKey.generate(curve=crv)
 
     for i in range(0, m):
-        assert g.from_string(sk[i], curve=crv).verifying_key.to_sec(compressed=False) == matrix[index][i], "One secret key doesn't match the public key."
+        assert g.from_string(sk[i], curve=crv).verifying_key.to_sec(compressed=False) == matrix[index][i], "One secret key doesn't match the public key. Index: " + str(i)
 
     print("------ Done with checking private key -------")
 
@@ -326,65 +409,7 @@ def verifyMG(message, matrix, I, c_0, ss):
     return c == c_0
 
 
-def createTransaction(publicKey, privateKey, destinations, amounts, mixin):
-    # publicKey: vector of public keys corresponding to the owner inputs(sec format)
-    # privateKey: vector of private keys corresponding to the public keys (format 32bytes number aka to_string() output)
-    # destinations: vector of public keys (sec format)
-    # amounts: vector of the different amounts going to the respective destinations public keys (int)
-    # mixin: the number of pk to get involved in the rings (int)
-    ## return: destinations: a vector of destiantions public keys as received (sec format)
-    ##         destinationsCommitment: a vector of commitment assigned to each destinations public keys (32 bytes numbers)
-    ##         I: part of MLSAG, a vector of pk in sec format corresponding the the sha256 hash of the sender pk 
-    ##         c_0: part of MLSAG, first sha3_256 (keccak) of the consecutive series of the MLSAG 
-    ##         ss: part of MLSAG, a matrix of "random" 32 bytes number
-    ##         infos: an array of ecdhEncode result containing the amount paid to the corresponding output pk
-    ##         rangeSig: vector of rangeSig (format TODO)
 
-    assert mixin < MAX_MIXIN and mixin > 0, "The number of ring participant should be between 0 and " + str(MAX_MIXIN) + "\n Aborting..."
-    assert len(privateKey) == len(publicKey), "The number of private key doesn't match the number of public key"
-    assert len(destinations) == len(amounts), \
-        "The number of outputs addresses should match the number of outputs amounts.\n\
-        Aborting..."
-    outNum = len(amounts)
-    for i in range (0, outNum):
-        assert amounts[i] > 0 and amounts[i] < MAX_AMOUNT, \
-            "The amount #" + str(i) + " should be between 0 and " + str(MAX_AMOUNT) + "\n\
-            Aborting..."
-
-    m = len(privateKey)
-    g = SigningKey.generate(curve=crv)
-
-
-    for i in range(0, m):
-        assert g.from_string(privateKey[i], curve=crv).verifying_key.to_sec(compressed=False) == publicKey[i], "One secret key doesn't match the public key."
-
-        # print("The private key is not in the right format.\n\
-            # The format is either a compressed key as a string of 33 hex or an uncompresed key as a string of 65 hex.\n\
-            # Aborting...")
-    inSkMasks = [] 
-    inPkMasks = [] 
-    for i in range(0,m):
-        secret = to_32_bytes_number(random.randrange(crv.order))
-        inSkMasks.append(secret)
-        inPkMasks.append(g.from_string(secret, curve=crv).verifying_key.to_string())
-
-
-    destinationsCommitment = []
-    infos = []
-    rangeSig = []
-    for i in range(0, outNum):
-
-        outCommit, outSkMask, rg = proveRange(amounts[i])
-        destinationsCommitment.append(outCommit)
-        rangeSig.append(rg)
-        hiddenMask, hiddenAmount, senderPk = ecdhEncode(outSkMask, to_32_bytes_number(amounts[i]), destinations[i])
-        infos.append([hiddenMask, hiddenAmount, senderPk])
-
-    pkMatrix, pkMasksMatrix, index = populateFromBlockchain(publicKey, inPkMasks, mixin)
-
-    I, c_0, ss = prepareMG(pkMatrix, pkMasksMatrix, privateKey, inSkMasks, destinations, destinationsCommitment, index)
-
-    return destinations, destinationsCommitment, I, c_0, ss, infos, rangeSig
 
 def populateFromBlockchain(publicKey, inPkMasks, mixin):
     # publicKey: vector of pk, sec format
@@ -421,6 +446,8 @@ def proveRange(amount):
     ## return: an output commitment (sum of ci) (32 bytes), 
     ##         a mask (32 bytes),
     ##         the actual range signature
+
+    
     rg = 1
     return to_32_bytes_number(random.randrange(crv.order)), to_32_bytes_number(random.randrange(crv.order)), rg
 
@@ -433,7 +460,7 @@ def test():
     
     print("------ Entering the second test case. -------")
 
-    for i in range(0, 10000):
+    for i in range(0, 10):
         x = random.randrange(crv.order)
         y = random.randrange(crv.order)
         newMask, newAmount, sendPubKey = ecdhEncode(to_32_bytes_number(x), to_32_bytes_number(y), bytes.fromhex(pub))
