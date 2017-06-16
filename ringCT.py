@@ -13,7 +13,7 @@ import time
 from ethjsonrpc import EthJsonRpc
 from ethjsonrpc.constants import BLOCK_TAGS, BLOCK_TAG_EARLIEST, BLOCK_TAG_LATEST
 
-debug = True
+debug = False
 MAX_AMOUNT = 2**64;
 MAX_MIXIN = 100; 
 crv=ecdsa.SECP256k1
@@ -223,7 +223,7 @@ def createTransaction(inPk, inSk, inAmounts, destinations, outAmounts, mixin):
     rangeSig = []
     outSkMasks = []
     for i in range(0, outNum):
-        print("------Creating rangeproof for amount#" + str(i) + "-------")
+        print("------Creating rangeproof for amount#" + str(i+1) + "-------")
         outCommit, outSkMask, rg = proveRange(outAmounts[i])
         destinationsCommitment.append(outCommit)
         outSkMasks.append(outSkMask)
@@ -249,8 +249,9 @@ def prepareMG(pubsK, pubsC, inSk, inSkMask, outC, outSkMasks, index):
     # inSk: vector of private key (size: m, bytes32 format)
     # inSkMask: vector of mask for the corresponding sk (size: m, 32bytes)
     # outC: vector of commitment for pk (hidden amount) (size: outPKsize, 32bytes)
-    # outSkMasks: vector TODO no idea (bytes32)
+    # outSkMasks: vector mask for out public keys (bytes32)
     # index: index of where in the pubsK matrix our pks are located
+    ## returns: same a genMG
 
     print("------ Preparing the matrix for the MG-------")
 
@@ -490,7 +491,11 @@ def GenSchnorrNonLinkable(x, P1, P2, index):
     return L1, s1, s2
 
 def VerSchnorrNonLinkable(P1, P2, L1, s1, s2):
-    # TODO Description
+    # P1: Pubkey in from_string format (32 bytes)
+    # P2: Pubkey in from_string format (32 bytes)
+    # L1: output of GenSchnorr, pubkey in from_string format (32 bytes)
+    # s1: output of GenSchnorr, number (32 bytes)
+    # s2: output of GenSchnorr, number (32 bytes)
     c2 = hashlib.sha256(L1).digest()
     L2 = VerifyingKey.from_public_point(g.from_string(s2).verifying_key.pubkey.point + (VerifyingKey.from_string(P2).pubkey.point * to_int_from_bytes(c2))).to_string()
     c1 = hashlib.sha256(L2).digest()
@@ -498,7 +503,13 @@ def VerSchnorrNonLinkable(P1, P2, L1, s1, s2):
     assert L1 == L1p, "GenSchnorrNonLinkable failed to generate a valid signature.\nAborting..."
 
 def GenASNL(x, P1, P2, indices):
-    # TODO Description
+    # x: vector of 32bytes number serving as mask
+    # P1: Public key 1, from_string format (32bytes)
+    # P2: Public key 2, from_string format (32bytes)
+    # indices: vector of number (1 and 0 in our case) to specify which public key will be used to close the ring
+    ## returns: L1: vector of public key (to_string format, 32bytes)
+    ##          s2: vector of 32 bytes number
+    ##          s: 32 bytes number, aggregate of s1
     n = len(x)
     L1 = [None] * n
     s1 = [None] * n
@@ -506,15 +517,14 @@ def GenASNL(x, P1, P2, indices):
     s = to_32_bytes_number(0)
     print("Generating the per bit signature of the amount")
     for j in range(0, n):
-        #if j % (n/10) == 0:
-
-        print("[", end='')
-        for u in range(0, 10):
-            if u < (j*10)/n:
-                print("#", end='')
-            else:
-                print(" ", end='')
-        print("]")
+        if j % (n//10) == 0:
+            print("[", end='')
+            for u in range(0, 10):
+                if u < (j*10)/n:
+                    print("#", end='')
+                else:
+                    print(" ", end='')
+            print("]")
         L1[j], s1[j], s2[j] = GenSchnorrNonLinkable(x[j], P1[j], P2[j], indices[j])
         if debug:
             VerSchnorrNonLinkable(P1[j], P2[j], L1[j], s1[j], s2[j])
@@ -522,7 +532,11 @@ def GenASNL(x, P1, P2, indices):
     return L1, s2, s
 
 def VerASNL(P1, P2, L1, s2, s):
-    # TODO Description
+    # P1: Public key 1, from_string format (32bytes)
+    # P2: Public key 2, from_string format (32bytes)
+    # L1: vector of public key (to_string format, 32bytes)
+    # s2: vector of 32 bytes number
+    # s: 32 bytes number, aggregate of s1
     n = len(P1)
     LHS = to_32_bytes_number(0)
     RHS = g.from_string(s).verifying_key.pubkey.point
@@ -540,9 +554,14 @@ def VerASNL(P1, P2, L1, s2, s):
         "GenASNL failed to generate a valid signature.\nAborting..."
 
 def proveRange(amount):
-    #TODO Description
-    # amount: the amount to prove range from
-    ## return: ???
+    # amount: the amount to prove range from, in int
+    ## returns: C_pk: output commitment serving as a public key (to_string 32bytes format)
+    ##          mask: part of the private key for C_pk. mask * G + amount * H == C_pk, 32 bytes number format
+    ##          rg: vector of range proofs, each entry contain a vector of public key Ci and a aggregate signature.
+    ##              The aggregate signature itself contains L1: vector of public key (to_string format, 32bytes)
+    ##                                                      s2: vector of 32 bytes number
+    ##                                                      s: 32 bytes number, aggregate of s1
+    ##              For more infos on asig, see GenASNL(...)
 
     HPow2 = hash_to_point(to_32_bytes_number(1)).pubkey.point
     H2 = []
@@ -567,6 +586,7 @@ def proveRange(amount):
     Ci = []
     CiH = []
 
+    print("------  Preparing different elements  -------")
     for i in range(0, ATOMS):
         ai.append(to_32_bytes_number(random.randrange(crv.order)))
         mask = add_2_32b(mask, ai[i]) #creating the total mask since you have to pass this to receiver...
@@ -588,7 +608,6 @@ def proveRange(amount):
                 "Sanity check failed in proveRange !" + bytes.hex(g.from_string(ai[i]).verifying_key.to_string()) +\
                 " ---- " + bytes.hex(CiH[i])
 
-    print("------ Preparation over, sigining next-------")
     L1, s2, s = GenASNL(ai, Ci, CiH, bb)
     if debug:
         VerASNL(Ci, CiH, L1, s2, s)
