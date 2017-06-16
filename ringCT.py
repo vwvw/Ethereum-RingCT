@@ -13,9 +13,11 @@ import time
 from ethjsonrpc import EthJsonRpc
 from ethjsonrpc.constants import BLOCK_TAGS, BLOCK_TAG_EARLIEST, BLOCK_TAG_LATEST
 
+debug = True
 MAX_AMOUNT = 2**64;
 MAX_MIXIN = 100; 
 crv=ecdsa.SECP256k1
+g = SigningKey.generate(curve=crv)
 P = 2**256 - 2**32 - 2**9 - 2**8 - 2**7 - 2**6 - 2**4 - 1
 G = "0479BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8"
 curveOrder = "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141"
@@ -24,15 +26,7 @@ connection = EthJsonRpc('localhost', 8545)
 contractAddress = "0xd87c13c2677756af2436155e8250f17e3b5038b0" 
 ATOMS = 64
 
-def getPublicKeys(number):
-    # TODO
-    return False
-
-def hashPublicKey(pubK):
-    return to_int_from_bytes(hashlib.sha256(pubK).digest())
-
 def hash_to_point(pubK):
-    g = SigningKey.generate(curve=crv)
     return g.from_string(hashlib.sha256(pubK).digest(), curve=crv).verifying_key
 
 def to_32_bytes_number (val, endianness='big'):
@@ -47,26 +41,11 @@ def to_32_bytes_number (val, endianness='big'):
 def to_int_from_bytes(val, endianness= 'big'):
     return int.from_bytes(val, byteorder=endianness)
 
-def to_hex_list_list(list):
-    l = []
-    for i in range(0, len(list)):
-        ll = []
-        for j in range(0, len(list[i])):
-            ll.append("0x"+bytes.hex(list[i][j]))
-        l.append(ll)
-    return l
-
 def add_2_32b(a, b):
     return to_32_bytes_number((to_int_from_bytes(a) + to_int_from_bytes(b)) % crv.order)
 
 def sub_2_32b(a, b):
     return to_32_bytes_number((to_int_from_bytes(a) - to_int_from_bytes(b)) % crv.order)
-
-def to_hex_list(list):
-    l = []
-    for i in range(0, len(list)):
-        l.append("0x"+bytes.hex(list[i]))
-    return l
 
 # def create_contract():
 #     compiled = "60606040527f79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f817986000557f483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b860015560406040519081016040528060005481526020016001548152506002906002610076929190610120565b5060206040519081016040528060026002806020026040519081016040528092919082600280156100bc576020028201915b8154815260200190600101908083116100a8575b505050505081525060046000820151816000019060026100dd929190610160565b5050507ffffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f600655600560075560066008556007600955341561011b57fe5b6101c5565b826002810192821561014f579160200282015b8281111561014e578251825591602001919060010190610133565b5b50905061015c91906101a0565b5090565b826002810192821561018f579160200282015b8281111561018e578251825591602001919060010190610173565b5b50905061019c91906101a0565b5090565b6101c291905b808211156101be5760008160009055506001016101a6565b5090565b90565b610890806101d46000396000f30060606040526000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff1680637422d36414610046578063ecd31f60146102e9575bfe5b341561004e57fe5b610166600480803590602001908201803590602001908080601f0160208091040260200160405190810160405280939291908181526020018383808284378201915050505050509190803590602001908201803590602001908080601f016020809104026020016040519081016040528093929190818152602001838380828437820191505050505050919080359060200190919080359060200190820180359060200190808060200260200160405190810160405280939291908181526020016000905b82821015610158578484839050604002016002806020026040519081016040528092919082600260200280828437820191505050505081526020019060010190610113565b5050505050919050506104b5565b604051808060200180602001858152602001806020018481038452888181518152602001915080519060200190808383600083146101c3575b8051825260208311156101c35760208201915060208101905060208303925061019f565b505050905090810190601f1680156101ef5780820380516001836020036101000a031916815260200191505b50848103835287818151815260200191508051906020019080838360008314610237575b80518252602083111561023757602082019150602081019050602083039250610213565b505050905090810190601f1680156102635780820380516001836020036101000a031916815260200191505b508481038252858181518152602001915080516000925b818410156102d3578284906020019060200201516002602002808383600083146102c3575b8051825260208311156102c35760208201915060208101905060208303925061029f565b505050905001926001019261027a565b9250505097505050505050505060405180910390f35b34156102f157fe5b6104b3600480803590602001908201803590602001908080601f016020809104026020016040519081016040528093929190818152602001838380828437820191505050505050919080359060200190919080359060200190919080359060200190820180359060200190808060200260200160405190810160405280939291908181526020016000905b828210156103c157848483905060400201600280602002604051908101604052809291908260026020028082843782019150505050508152602001906001019061037c565b50505050509190803560001916906020019091908035906020019091908035906020019091908035906020019082018035906020019080806020026020016040519081016040528093929190818152602001838360200280828437820191505050505050919080359060200190919080359060200190820180359060200190808060200260200160405190810160405280939291908181526020016000905b828210156104a5578484839050604002016002806020026040519081016040528092919082600260200280828437820191505050505081526020019060010190610460565b5050505050919050506106c9565b005b6104bd61083c565b6104c561083c565b60006104cf610850565b7f551303dd5f39cbfe6daba6b3e27754b8a7d72f519756a2cde2b92c2bbde159a76040518080602001828103825260138152602001807f2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d0000000000000000000000000081525060200191505060405180910390a17f43123f7005ece31cd2478fa2cd0bec5ea2e353c1c3fe9ca390a6de2ab917eac96040518080602001828103825260168152602001807f576520676f742061206e696365206d6573736167653a0000000000000000000081525060200191505060405180910390a17f43123f7005ece31cd2478fa2cd0bec5ea2e353c1c3fe9ca390a6de2ab917eac9886040518080602001828103825283818151815260200191508051906020019080838360008314610610575b805182526020831115610610576020820191506020810190506020830392506105ec565b505050905090810190601f16801561063c5780820380516001836020036101000a031916815260200191505b509250505060405180910390a17f43123f7005ece31cd2478fa2cd0bec5ea2e353c1c3fe9ca390a6de2ab917eac96040518080602001828103825260138152602001807f2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d0000000000000000000000000081525060200191505060405180910390a18787878793509350935093505b945094509450949050565b6000600088518a8c02141515610768577f551303dd5f39cbfe6daba6b3e27754b8a7d72f519756a2cde2b92c2bbde159a760405180806020018281038252602b8152602001807f4d69736d6174636820696e207468652064696d656e73696f6e206f662074686581526020017f206b6579206d617472697800000000000000000000000000000000000000000081525060400191505060405180910390a15b7f43123f7005ece31cd2478fa2cd0bec5ea2e353c1c3fe9ca390a6de2ab917eac98c60405180806020018281038252838181518152602001915080519060200190808383600083146107d9575b8051825260208311156107d9576020820191506020810190506020830392506107b5565b505050905090810190601f1680156108055780820380516001836020036101000a031916815260200191505b509250505060405180910390a1600090505b8381101561082d575b8080600101915050610817565b5b505050505050505050505050565b602060405190810160405280600081525090565b6020604051908101604052806000815250905600a165627a7a72305820a5fa078f0f18cb8426d0c3bc94628d48f90145b19b0de014beb6764f4c00e7ca0029"
@@ -110,6 +89,21 @@ def send_ring(message, pubkey, c0, ss, II):
         I = VerifyingKey.from_string(II[i]).pubkey.point
         IIAlligned.append([to_32_bytes_number(I.x()), to_32_bytes_number(I.y())])
 
+
+    # def to_hex_list_list(list):
+    #     l = []
+    #     for i in range(0, len(list)):
+    #         ll = []
+    #         for j in range(0, len(list[i])):
+    #             ll.append("0x"+bytes.hex(list[i][j]))
+    #         l.append(ll)
+    #     return l
+        
+    # def to_hex_list(list):
+    #     l = []
+    #     for i in range(0, len(list)):
+    #         l.append("0x"+bytes.hex(list[i]))
+    #     return l
     # print(to_hex_list_list(pubkeysAlligned))
     # print("-----------")
     # print(to_hex_list(IIAlligned))
@@ -146,14 +140,13 @@ def ecdhEncode(mask, amount, receiverPk):
     ## return: newMask: hidden mask (32 bytes number)
     ##         newAmount: hidden amount (32 bytes number)
     ##         senderPk: the public key genereated by the sender to encode this amount (sec format)
-    g = SigningKey.generate(curve=crv)
+
     secret = to_32_bytes_number(random.randrange(crv.order))
     senderSk= g.from_string(secret, curve=crv)
     senderPk = senderSk.verifying_key
     recvPubKey = VerifyingKey.from_string(receiverPk, curve=crv)
     to_hash = VerifyingKey.from_public_point(recvPubKey.pubkey.point * to_int_from_bytes(secret), curve=crv).to_string()
     sharedSecretInt = to_int_from_bytes(hashlib.sha256((to_hash)).digest())
-    # #TODO overlow ??
     newMask = (to_int_from_bytes(mask) + sharedSecretInt) % crv.order
     newAmount = (to_int_from_bytes(amount) + sharedSecretInt) % crv.order
     return  to_32_bytes_number(newMask), to_32_bytes_number(newAmount), senderPk.to_string()
@@ -166,6 +159,7 @@ def ecdhDecode(mask, amount, senderPk, receiverSk):
     # receiverSk: the receiver sk (32 bytes number)
     ## return: newMask: unhidden mask (32 bytes number)
     ##         newAmount: unhidden amount (32 bytes number)
+
     sendPubKey = VerifyingKey.from_string(senderPk, curve=crv)
     to_hash = VerifyingKey.from_public_point(sendPubKey.pubkey.point * to_int_from_bytes(receiverSk), curve=crv).to_string()
     sharedSecretInt = to_int_from_bytes(hashlib.sha256((to_hash)).digest())
@@ -173,14 +167,12 @@ def ecdhDecode(mask, amount, senderPk, receiverSk):
     newAmount = (to_int_from_bytes(amount) - sharedSecretInt) % crv.order
     return to_32_bytes_number(newMask), to_32_bytes_number(newAmount)
 
-
-def createTransaction(inPk, inPkMasks, inSk, privateAmountKey, destinations, amounts, mixin):
+def createTransaction(inPk, inSk, inAmounts, destinations, outAmounts, mixin):
     # inPk: vector of public keys corresponding to the owner inputs(sec format)
-    # inPkMasks: vector of public keys corresponding to the mask to be used with the public keys (format 32bytes number aka to_string() output)
     # inSk: vector of private keys corresponding to the public keys (format 32bytes number)
-    # privateAmountKey: vector of private keys corresponding to the key to unlock the found from the previous transactions
+    # inAmounts: vector of number corresponding to the amount coming from corresponding public key
     # destinations: vector of public keys (sec format)
-    # amounts: vector of the different amounts going to the respective destinations public keys (int)
+    # outAmounts: vector of the different amounts going to the respective destinations public keys (int)
     # mixin: the number of pk to get involved in the rings (int)
     ## return: destinations: a vector of destinations public keys as received (sec format)
     ##         destinationsCommitment: a vector of commitment assigned to each destinations public keys (32 bytes numbers)
@@ -192,47 +184,62 @@ def createTransaction(inPk, inPkMasks, inSk, privateAmountKey, destinations, amo
 
     print("------ Let's create a the transaction -------")
     assert mixin < MAX_MIXIN and mixin > 0, "The number of ring participant should be between 0 and " + str(MAX_MIXIN) + "\n Aborting..."
-    assert len(inSk) == len(inPk) and len(inPkMasks) == len(inPk) and len(privateAmountKey) == len(inPk), "The number of private key doesn't match the number of public key"
-    assert len(destinations) == len(amounts), \
+    assert len(inSk) == len(inPk) and len(inAmounts) == len(inPk), \
+        "The number of private key doesn't match the number of public key or the number of input amounts.\n\
+        Aborting..."
+    assert len(destinations) == len(outAmounts), \
         "The number of outputs addresses should match the number of outputs amounts.\n\
         Aborting..."
-    outNum = len(amounts)
+    m = len(inSk)
+    for i in range(0, m):
+        assert inAmounts[i] > 0 and inAmounts[i] < MAX_AMOUNT, \
+            "The ingoing amount #" + str(i) + " should be between 0 and " + str(MAX_AMOUNT) + "\n\
+            Aborting..."
+    outNum = len(destinations)
     for i in range (0, outNum):
-        assert amounts[i] > 0 and amounts[i] < MAX_AMOUNT, \
-            "The amount #" + str(i) + " should be between 0 and " + str(MAX_AMOUNT) + "\n\
+        assert outAmounts[i] > 0 and outAmounts[i] < MAX_AMOUNT, \
+            "The outgoing amount #" + str(i) + " should be between 0 and " + str(MAX_AMOUNT) + "\n\
             Aborting..."
 
-    m = len(inSk)
-    g = SigningKey.generate(curve=crv)
-
-
     for i in range(0, m):
-        assert g.from_string(inSk[i], curve=crv).verifying_key.to_string() == inPk[i], "One secret key doesn't match the public key."
+        assert g.from_string(inSk[i], curve=crv).verifying_key.to_string() == inPk[i], \
+            "One secret key doesn't match the corresponding public key.\n\
+            Aborting..."
+
     print("------ All arguments are good, next ! -------")
 
-        # print("The private key is not in the right format.\n\
-            # The format is either a compressed key as a string of 33 hex or an uncompresed key as a string of 65 hex.\n\
-            # Aborting...")
-
-
+    inSkMasks = [] 
+    inPkMasks = [] 
+    for i in range(0, m):
+        skMask = to_32_bytes_number(random.randrange(crv.order))
+        inSkMasks.append(skMask)
+        pkMask = g.from_string(skMask, curve=crv).verifying_key
+        aH = hash_to_point(to_32_bytes_number(1)).pubkey.point * inAmounts[i]
+        pkMaskPoint = pkMask.pubkey.point + aH
+        inPkMasks.append(VerifyingKey.from_public_point(pkMaskPoint).to_string())
 
     destinationsCommitment = []
     infos = []
     rangeSig = []
     outSkMasks = []
     for i in range(0, outNum):
-        print("------ Creating a range proof for " + str(outNum) + " amount -------")
-        outCommit, outSkMask, rg = proveRange(amounts[i])
+        print("------Creating rangeproof for amount#" + str(i) + "-------")
+        outCommit, outSkMask, rg = proveRange(outAmounts[i])
         destinationsCommitment.append(outCommit)
         outSkMasks.append(outSkMask)
         rangeSig.append(rg)
-        hiddenMask, hiddenAmount, senderPk = ecdhEncode(outSkMask, to_32_bytes_number(amounts[i]), destinations[i])
+        hiddenMask, hiddenAmount, senderPk = ecdhEncode(outSkMask, to_32_bytes_number(outAmounts[i]), destinations[i])
         infos.append([hiddenMask, hiddenAmount, senderPk])
+
+    print("------  Rangeproofs are valid. Next   -------")
 
     pkMatrix, pkMasksMatrix, index = populateFromBlockchain(inPk, inPkMasks, mixin)
 
-    print("------ Matrix populated, going further-------")
+    print("------Matrix populated, going further!-------")
+
     I, c_0, ss = prepareMG(pkMatrix, pkMasksMatrix, inSk, inSkMasks, destinationsCommitment, outSkMasks, index)
+
+    print("------Transaction created with succes!-------")
 
     return destinations, destinationsCommitment, I, c_0, ss, infos, rangeSig
 
@@ -246,19 +253,25 @@ def prepareMG(pubsK, pubsC, inSk, inSkMask, outC, outSkMasks, index):
     # index: index of where in the pubsK matrix our pks are located
 
     print("------ Preparing the matrix for the MG-------")
+
     rowsQ = len(pubsK)
-    assert len(pubsK) == len(pubsC) and len(pubsK) > 0, "Mismatch in the number of public commitment and keys"
+    if debug:
+        assert len(pubsK) == len(pubsC) and len(pubsK) > 0, "\
+            Mismatch in the number of public commitment and keys.\nAborting..."
     colsM = len(pubsK[0])
-    assert len(inSk) == len(inSkMask) and len(inSk) == colsM, "Mismatch in the number of private keys or private key masks"
-    for i in range(0, rowsQ): 
-        assert len(pubsK[i]) == len(pubsC[i]) and len(pubsK[i]) == colsM, "Mismatch in the number of public commitment and keys"
-    assert index >= 0 and index < rowsQ, "index: " + str(index) + " should be between 0 and " + str(rowsQ) + " (the number of public key)"
-    assert len(outC) == len(outSkMasks) and len(outC) > 0, "Mismatch in the number of private commitment and keys"
+    if debug:
+        assert len(inSk) == len(inSkMask) and len(inSk) == colsM, \
+            "Mismatch in the number of private keys or private key masks.\nAborting..."
+        for i in range(0, rowsQ): 
+            assert len(pubsK[i]) == len(pubsC[i]) and len(pubsK[i]) == colsM, \
+                "Mismatch in the number of public commitment and keys.\nAborting..."
+        assert index >= 0 and index < rowsQ, "index: " + str(index) + " should be between 0 and "\
+            + str(rowsQ) + " (the number of public key).\nAborting..."
+        assert len(outC) == len(outSkMasks) and len(outC) > 0, \
+            "Mismatch in the number of private commitment and keys.\nAborting..."
 
-
-    bytes0 = to_32_bytes_number(0)
-    matrix = [[bytes0 for x in range(colsM + 1)] for y in range(rowsQ)]
-    sk = [bytes0 for x in range(colsM + 1)]
+    matrix = [[None for x in range(colsM + 1)] for y in range(rowsQ)]
+    sk = [None for x in range(colsM + 1)]
     for i in range(colsM):
         sk[i] = inSk[i]
         if i == 0:
@@ -278,18 +291,13 @@ def prepareMG(pubsK, pubsC, inSk, inSkMask, outC, outSkMasks, index):
         for j in range(len(outC)):
             point = VerifyingKey.from_string(outC[j]).pubkey.point
             matrix[i][colsM] = matrix[i][colsM] + VerifyingKey.from_public_point(Point(crv.curve, point.x(), (-point.y()) % crv.curve.p(), crv.order)).pubkey.point
-            # matrix[i][colsM] = matrix[i][colsM] + VerifyingKey.from_public_point(point * -1 ).pubkey.point
 
     for j in range(rowsQ):
         matrix[j][colsM] = VerifyingKey.from_public_point(matrix[j][colsM]).to_string()
 
-
-    g = SigningKey.generate(curve=crv)
-    # print(matrix[index][colsM])
-    # print(VerifyingKey.from_public_point(g.from_string(sk[colsM]).verifying_key.pubkey.point + g.from_string(to_32_bytes_number())).to_string())
-    #TODO message
     print("------ Done with the matrix for the MG-------")
 
+    #TODO message
     return genMG("", matrix, sk, index)
 
 def list_to_bytes(list):
@@ -301,24 +309,21 @@ def list_to_bytes(list):
 def genMG(message, matrix, sk, index):
 
     n = len(matrix)
-    assert n > 0, "No public key received."
+    if debug:
+        assert n > 0, "No public key received.\nAborting..."
     m = len(matrix[0])
-    assert m == len(sk), "The number of secret key doesn't match the number of public key."
-
-    for i in range(0, n):
-        assert len(matrix[i]) == m, "Public key array is not rectangular."
-    assert m > 0, "No public key in the array."
-    assert index >= 0 and index < m, "Not a valid index."
-    
+    if debug:
+        assert m == len(sk), "The number of secret key doesn't match the number of public key.\nAborting..."
+        for i in range(0, n):
+            assert len(matrix[i]) == m, "Public key array is not rectangular.\nAborting..."
+        assert m > 0, "No public key in the array.\nAborting..."
+        assert index >= 0 and index < m, "Not a valid index.\nAborting..."
+        for i in range(0, m):
+            assert g.from_string(sk[i], curve=crv).verifying_key.to_string() == matrix[index][i], \
+                "One secret key doesn't match the public key. Index: " + str(i) + "\n\
+                Aborting..."
 
     message_bytes = bytes(message, 'UTF-8')
-
-    g = SigningKey.generate(curve=crv)
-
-    for i in range(0, m):
-        assert g.from_string(sk[i], curve=crv).verifying_key.to_string() == matrix[index][i], "One secret key doesn't match the public key. Index: " + str(i)
-
-    print("------ Done with checking private key -------")
 
     alpha = [None for x in range(m)]
     I = [None for x in range(m)]
@@ -326,7 +331,6 @@ def genMG(message, matrix, sk, index):
     
     L = [[None for x in range(m)] for y in range(n)] 
     R = [[None for x in range(m)] for y in range(n)] 
-
 
     for j in range(0, m):
         skJHashPub_point = hash_to_point(matrix[index][j]).pubkey.point * to_int_from_bytes(sk[j])
@@ -337,7 +341,6 @@ def genMG(message, matrix, sk, index):
 
         alphaHashPub_point = hash_to_point(matrix[index][j]).pubkey.point * to_int_from_bytes(alpha[j])
         R[index][j] = VerifyingKey.from_public_point(alphaHashPub_point, curve=crv).to_string()
-
 
     c_idx_1 = hashlib.sha3_256(message_bytes + list_to_bytes(L[index]) + list_to_bytes(R[index])).digest()
 
@@ -365,29 +368,32 @@ def genMG(message, matrix, sk, index):
         if idx == n-1:
             c_0 = c
 
-
-    L_tmp = [None for x in range(m)]
-    R_tmp = [None for x in range(m)]
-
-    for j in range(0, m):
-        ss[index][j] = to_32_bytes_number((to_int_from_bytes(alpha[j]) - to_int_from_bytes(c) * to_int_from_bytes(sk[j])) % crv.order)
-
-        c_PubK = VerifyingKey.from_string(matrix[index][j], curve=crv).pubkey.point * to_int_from_bytes(c)
-        sj_G = g.from_string(ss[index][j], curve=crv)
-        L_point = c_PubK + sj_G.verifying_key.pubkey.point
-        L_tmp[j] = VerifyingKey.from_public_point(L_point, curve=crv).to_string()
-
-        c_I = VerifyingKey.from_string(I[j], curve=crv).pubkey.point * to_int_from_bytes(c)
-        R_point = hash_to_point(matrix[index][j]).pubkey.point * to_int_from_bytes(ss[index][j]) + c_I
-        R_tmp[j] = VerifyingKey.from_public_point(R_point, curve=crv).to_string()
-
-    # sanity check:
-    c_tmp = hashlib.sha3_256(message_bytes + list_to_bytes(L_tmp) + list_to_bytes(R_tmp)).digest()
-    assert L_tmp == L[index] and R_tmp == R[index], "Sanity check for computing ss[index] failed."
     print("------ Done with generating the MLSAG -------")
 
-    assert verifyMG(message, matrix, I, c_0, ss), "Ring verification failed."
-    print("------ Done with verifying the MLSAG  -------")
+    if debug:
+        # sanity check:
+        L_tmp = [None for x in range(m)]
+        R_tmp = [None for x in range(m)]
+
+        for j in range(0, m):
+            ss[index][j] = to_32_bytes_number((to_int_from_bytes(alpha[j]) - to_int_from_bytes(c) * to_int_from_bytes(sk[j])) % crv.order)
+
+            c_PubK = VerifyingKey.from_string(matrix[index][j], curve=crv).pubkey.point * to_int_from_bytes(c)
+            sj_G = g.from_string(ss[index][j], curve=crv)
+            L_point = c_PubK + sj_G.verifying_key.pubkey.point
+            L_tmp[j] = VerifyingKey.from_public_point(L_point, curve=crv).to_string()
+
+            c_I = VerifyingKey.from_string(I[j], curve=crv).pubkey.point * to_int_from_bytes(c)
+            R_point = hash_to_point(matrix[index][j]).pubkey.point * to_int_from_bytes(ss[index][j]) + c_I
+            R_tmp[j] = VerifyingKey.from_public_point(R_point, curve=crv).to_string()
+
+        c_tmp = hashlib.sha3_256(message_bytes + list_to_bytes(L_tmp) + list_to_bytes(R_tmp)).digest()
+        assert L_tmp == L[index] and R_tmp == R[index], "Sanity check for computing ss[index] failed.\nAborting..."
+
+    if debug:
+        assert verifyMG(message, matrix, I, c_0, ss), "Ring verification failed.\nAborting..."
+        print("------ Done with verifying the MLSAG  -------")
+    
     return I, c_0, ss
 
 def verifyMG(message, matrix, I, c_0, ss):
@@ -400,8 +406,6 @@ def verifyMG(message, matrix, I, c_0, ss):
     assert len(I) == len(ss[0]), "Not the same number of pubkey hash (I) as of secret (ss)."
 
     message_bytes = bytes(message, 'UTF-8')
-
-    g = SigningKey.generate(curve=crv)
 
     L = [[None for x in range(m)] for y in range(n)] 
     R = [[None for x in range(m)] for y in range(n)] 
@@ -430,7 +434,10 @@ def populateFromBlockchain(publicKey, inPkMasks, mixin):
     ##         coressponding masks matrix, 
     ##         index of our pks in the matrix
 
-    assert len(publicKey) == len(inPkMasks), "Mismatch in the number of public key and their corresponding mask"
+    if debug:
+        assert len(publicKey) == len(inPkMasks), \
+            "Mismatch in the number of public key and their corresponding mask\n\
+            Aborting..."
     m = len(publicKey)
     index = random.randrange(mixin - 1)
     pkMatrix = []
@@ -447,26 +454,14 @@ def populateFromBlockchain(publicKey, inPkMasks, mixin):
 def getKeyFromBlockchain():
     #TODO
     ## return: a public key "from the blockchain" in the to_string format
-    g = SigningKey.generate(curve=crv)
     x = to_32_bytes_number(random.randrange(crv.order))
     return g.from_string(x).verifying_key.to_string()
-
-def d2b(n, digits):
-    b = [0] * digits
-    i = 0
-    while n:
-        b[i] = n & 1
-        i = i + 1
-        n >>= 1
-    return b 
 
 def GenSchnorrNonLinkable(x, P1, P2, index):
     # x: bytes32
     # P1: bytes32
     # P2: bytes32
 
-    print("Generating Aggregate Schnorr Non-linkable Ring Signature - Step 2")
-    g = SigningKey.generate(curve=crv)
     if index == 0:
         a = to_32_bytes_number(random.randrange(crv.order))
         L1 = g.from_string(a).verifying_key.to_string()
@@ -477,8 +472,9 @@ def GenSchnorrNonLinkable(x, P1, P2, index):
         s1 = to_32_bytes_number((to_int_from_bytes(a) -  to_int_from_bytes(x) * to_int_from_bytes(c1)) % crv.order)
 
         # sanity check
-        L1p = VerifyingKey.from_public_point(g.from_string(s1).verifying_key.pubkey.point + (VerifyingKey.from_string(P1).pubkey.point * to_int_from_bytes(c1))).to_string()
-        assert L1p == L1, "Sanity check failed in GenSchnorr 1"
+        if(debug):
+            L1p = VerifyingKey.from_public_point(g.from_string(s1).verifying_key.pubkey.point + (VerifyingKey.from_string(P1).pubkey.point * to_int_from_bytes(c1))).to_string()
+            assert L1p == L1, "Sanity check failed in GenSchnorr 1\nAborting..."
     if index == 1:
         a = to_32_bytes_number(random.randrange(crv.order))
         L2 = g.from_string(a).verifying_key.to_string()
@@ -488,46 +484,45 @@ def GenSchnorrNonLinkable(x, P1, P2, index):
         c2 = hashlib.sha256(L1).digest()
         s2 = to_32_bytes_number((to_int_from_bytes(a) - (to_int_from_bytes(x) * to_int_from_bytes(c2))) % crv.order)
         # sanity check
-        L2p = VerifyingKey.from_public_point(g.from_string(s2).verifying_key.pubkey.point + (VerifyingKey.from_string(P2).pubkey.point * to_int_from_bytes(c2))).to_string()
-        assert L2p == L2, "Sanity check failed in GenSchnorr 2"
+        if(debug):
+            L2p = VerifyingKey.from_public_point(g.from_string(s2).verifying_key.pubkey.point + (VerifyingKey.from_string(P2).pubkey.point * to_int_from_bytes(c2))).to_string()
+            assert L2p == L2, "Sanity check failed in GenSchnorr 2\nAborting..."
     return L1, s1, s2
 
 def VerSchnorrNonLinkable(P1, P2, L1, s1, s2):
-    g = SigningKey.generate(curve=crv)
+    # TODO Description
     c2 = hashlib.sha256(L1).digest()
     L2 = VerifyingKey.from_public_point(g.from_string(s2).verifying_key.pubkey.point + (VerifyingKey.from_string(P2).pubkey.point * to_int_from_bytes(c2))).to_string()
     c1 = hashlib.sha256(L2).digest()
     L1p = VerifyingKey.from_public_point(g.from_string(s1).verifying_key.pubkey.point + (VerifyingKey.from_string(P1).pubkey.point * to_int_from_bytes(c1))).to_string()
-    if L1 == L1p:
-        print("Verified")
-        return True
-    else:
-        print("Didn't verify")
-        print(L1,"!=",  L1p)
-        return False
+    assert L1 == L1p, "GenSchnorrNonLinkable failed to generate a valid signature.\nAborting..."
 
 def GenASNL(x, P1, P2, indices):
-    #Aggregate Schnorr Non-Linkable
-    #x, P1, P2, are key vectors here, but actually you 
-    #indices specifices which column of the given row of the key vector you sign.
-    #the key vector with the first or second key
+    # TODO Description
     n = len(x)
-    print("Generating Aggregate Schnorr Non-linkable Ring Signature")
     L1 = [None] * n
     s1 = [None] * n
     s2 = [None] * n
     s = to_32_bytes_number(0)
+    print("Generating the per bit signature of the amount")
     for j in range(0, n):
-        print("Generating the " + str(j) + " bit signature of the amount")
+        #if j % (n/10) == 0:
+
+        print("[", end='')
+        for u in range(0, 10):
+            if u < (j*10)/n:
+                print("#", end='')
+            else:
+                print(" ", end='')
+        print("]")
         L1[j], s1[j], s2[j] = GenSchnorrNonLinkable(x[j], P1[j], P2[j], indices[j])
-        assert VerSchnorrNonLinkable(P1[j], P2[j], L1[j], s1[j], s2[j]), "GenSchnorrNonLinkable failed to generate a valid signature"
+        if debug:
+            VerSchnorrNonLinkable(P1[j], P2[j], L1[j], s1[j], s2[j])
         s = add_2_32b(s, s1[j])
     return L1, s2, s
 
 def VerASNL(P1, P2, L1, s2, s):
-    #Aggregate Schnorr Non-Linkable
-    print("Verifying Aggregate Schnorr Non-linkable Ring Signature")
-    g = SigningKey.generate(curve=crv)
+    # TODO Description
     n = len(P1)
     LHS = to_32_bytes_number(0)
     RHS = g.from_string(s).verifying_key.pubkey.point
@@ -541,28 +536,30 @@ def VerASNL(P1, P2, L1, s2, s):
             LHS = LHS + VerifyingKey.from_string(L1[j]).pubkey.point
         c1 = hashlib.sha256(L2).digest()
         RHS = RHS + (VerifyingKey.from_string(P1[j]).pubkey.point * to_int_from_bytes(c1))
-    if VerifyingKey.from_public_point(LHS).to_string() == VerifyingKey.from_public_point(RHS).to_string():
-        print("Verified ASNL")
-        return True
-    else:
-        print("Didn't verify ASNL")
-        print(LHS,"!=",  RHS)
-        return False
+    assert VerifyingKey.from_public_point(LHS).to_string() == VerifyingKey.from_public_point(RHS).to_string(), \
+        "GenASNL failed to generate a valid signature.\nAborting..."
 
 def proveRange(amount):
-    #TODO
+    #TODO Description
     # amount: the amount to prove range from
-    ## return: an output commitment (sum of ci) (32 bytes), 
-    ##         a mask (32 bytes),
-    ##         the actual range signature
+    ## return: ???
+
     HPow2 = hash_to_point(to_32_bytes_number(1)).pubkey.point
     H2 = []
     for i in range(0, ATOMS):
         H2.append(VerifyingKey.from_public_point(HPow2).to_string())
         HPow2 = HPow2 * 2
 
+    def d2b(n, digits):
+        b = [0] * digits
+        i = 0
+        while n:
+            b[i] = n & 1
+            i = i + 1
+            n >>= 1
+        return b 
+
     bb = d2b(amount, ATOMS) #gives binary form of bb in "digits" binary digits
-    g = SigningKey.generate(curve=crv)
     mask = to_32_bytes_number(0)
     
     C = to_32_bytes_number(0)
@@ -583,19 +580,22 @@ def proveRange(amount):
 
 
         negateH2 = Point(crv.curve, VerifyingKey.from_string(H2[i]).pubkey.point.x(), (-VerifyingKey.from_string(H2[i]).pubkey.point.y()) , crv.order)
-        # negateH2 = VerifyingKey.from_string(H2[i]).pubkey.point * -1
         CiH.append(VerifyingKey.from_public_point(VerifyingKey.from_string(Ci[i]).pubkey.point + negateH2).to_string()) # ach scahde, pubkey - smth, how to do ?
-        if bb[i] == 1:
-            assert g.from_string(ai[i]).verifying_key.to_string() == CiH[i], "aie aie problème !" + bytes.hex(g.from_string(ai[i]).verifying_key.to_string()) + " ---- " + bytes.hex(CiH[i])
+        
+        if debug and bb[i] == 1:
+            #Sanity check A + h2 - h2 == A
+            assert g.from_string(ai[i]).verifying_key.to_string() == CiH[i], \
+                "Sanity check failed in proveRange !" + bytes.hex(g.from_string(ai[i]).verifying_key.to_string()) +\
+                " ---- " + bytes.hex(CiH[i])
 
     print("------ Preparation over, sigining next-------")
-    # L1, s2, s = GenASNL(ai, Ci, CiH, bb)
-    # assert VerASNL(Ci, CiH, L1, s2, s), "GenASNL failed to generate a valid signature"
+    L1, s2, s = GenASNL(ai, Ci, CiH, bb)
+    if debug:
+        VerASNL(Ci, CiH, L1, s2, s)
 
 
-    # asig = [L1, s2, s]
-    # rg = [Ci, asig]
-    rg = 2
+    asig = [L1, s2, s]
+    rg = [Ci, asig]
 
     C_point = VerifyingKey.from_string(Ci[0]).pubkey.point
     for i in range(1, len(Ci)):
@@ -605,13 +605,14 @@ def proveRange(amount):
     for i in range(0, len(Ci)):
         C = add_2_32b(C, Ci[i])
 
-    # assert VerifyingKey.from_string(C) == g.from_string(mask).verifying_key, "Ouïe, Ouïe c'est cassé ! 2x"
 
     C_pk = VerifyingKey.from_public_point(C_point)
+    if debug:
+        x = hash_to_point(to_32_bytes_number(1)).pubkey.point * amount + g.from_string(mask).verifying_key.pubkey.point
+        assert C_pk.to_string() == VerifyingKey.from_public_point(x).to_string(), \
+            "Something went wrong in the genreation of the commitment! " +\
+            bytes.hex(C_pk.to_string()) + " should equal " + bytes.hex(VerifyingKey.from_public_point(x).to_string())
 
-    x = hash_to_point(to_32_bytes_number(1)).pubkey.point * amount + g.from_string(mask).verifying_key.pubkey.point
-    assert C_pk.to_string() == VerifyingKey.from_public_point(x).to_string(), "Ouïe, Ouïe c'est cassé ! " + bytes.hex(C_pk.to_string()) + " .....  " + bytes.hex(VerifyingKey.from_public_point(x).to_string())
-    print("victory")
     return C_pk.to_string(), mask, rg
 
 def test():
@@ -690,30 +691,20 @@ pub5 = "04da11a42320ae495014dd9c1c51d43d6c55ca51b7fe9ae3e1258e927e97f48be4e7a447
 #         contractAddress = content[i][8:50]
 
 
-g = SigningKey.generate(curve=crv)
+
 
 inAmounts = [3,4]
 inSk = []
 inPk = []
-inSkMasks = [] 
-inPkMasks = [] 
 for i in range(0, len(inAmounts)):
     sk = to_32_bytes_number(random.randrange(crv.order))
     inSk.append(sk)
     inPk.append(g.from_string(sk, curve=crv).verifying_key.to_string())
 
-    skMask = to_32_bytes_number(random.randrange(crv.order))
-    inSkMasks.append(skMask)
-    pkMask = g.from_string(skMask, curve=crv).verifying_key
-    aH = hash_to_point(to_32_bytes_number(1)).pubkey.point * inAmounts[i]
-    pkMaskPoint = pkMask.pubkey.point + aH
-    inPkMasks.append(VerifyingKey.from_public_point(pkMaskPoint).to_string())
-
 outAmount = [1, 6]
 
-
 outputPub = [VerifyingKey.from_sec(bytes.fromhex(pub)).to_string(), VerifyingKey.from_sec(bytes.fromhex(pub5)).to_string()]
-createTransaction(inPk, inPkMasks, inSk, inSkMasks, outputPub, outAmount, 2)
+createTransaction(inPk, inSk, inAmounts, outputPub, outAmount, 2)
 
 
 # create_contract()
