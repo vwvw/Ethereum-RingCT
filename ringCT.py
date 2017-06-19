@@ -2,6 +2,7 @@ from secp256k1 import *
 import struct
 import random
 import hashlib
+import sha3
 import binascii
 import ecdsa
 from ecdsa import SigningKey, VerifyingKey
@@ -13,7 +14,7 @@ import time
 from ethjsonrpc import EthJsonRpc
 from ethjsonrpc.constants import BLOCK_TAGS, BLOCK_TAG_EARLIEST, BLOCK_TAG_LATEST
 
-debug = False
+debug = True
 MAX_AMOUNT = 2**64;
 MAX_MIXIN = 100; 
 crv=ecdsa.SECP256k1
@@ -23,7 +24,7 @@ G = "0479BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798483ADA772
 curveOrder = "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141"
 
 connection = EthJsonRpc('localhost', 8545)
-contractAddress = "0xd87c13c2677756af2436155e8250f17e3b5038b0" 
+contractAddress = "0xa7b1800d46dd564278053eeb06cbdfdce3798c98" 
 ATOMS = 64
 
 def hash_to_point(pubK):
@@ -112,17 +113,26 @@ def send_ring(message, pubkey, c0, ss, II):
 
 
     #function testb(string message, uint256 pkX, uint256 pkY, bytes32[2][] pkB, bytes32 c0, uint256 ssX, uint256 ssY, bytes32[] ssB, uint256 IIX, bytes32[2][] IIB) returns (bool)
-    results = connection.call_with_transaction(connection.eth_coinbase(), contractAddress, 
+    cb = connection.eth_coinbase()
+    print(cb)
+    results = connection.call_with_transaction(cb, contractAddress, 
         # function signature
         'testb(string,uint256,uint256,bytes32[2][],bytes32,uint256,uint256,bytes32[],uint256,bytes32[2][])',\
         [message,\
         len(pubkey), len(pubkey[0]), pubkeysAlligned,\
         c0,\
         len(ss), len(ss[0]), ssAlligned, \
-        len(II), IIAlligned], gas=900000000)
 
+        len(II), IIAlligned], gas=99999999999, gas_price=1)
+    
+    bashCommand = 'wget 127.0.0.1:8545 --background --post-data ' + results.replace(" ", "")
+    import subprocess
+    process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
+    output, error = process.communicate()
+    print(output)
+    print(results)
     print("------Transaction sent, waiting events-------")
-    time.sleep(5)
+    time.sleep(180)
 
     for i in range(0, len(filter)):
         change = connection.eth_getFilterChanges(filter[i])
@@ -130,7 +140,7 @@ def send_ring(message, pubkey, c0, ss, II):
             for j in range(0, len(change)):
                 print(filterNames[i] + " result " + str(j) + ":\n" + str(bytes.fromhex(change[j]["data"][2:].replace('00', ''))))
 
-    print("------ All events have benn displayed -------")
+    print("------ All events have been displayed -------")
 
 
 def ecdhEncode(mask, amount, receiverPk): 
@@ -241,7 +251,7 @@ def createTransaction(inPk, inSk, inAmounts, destinations, outAmounts, mixin):
 
     print("------Transaction created with succes!-------")
 
-    return destinations, destinationsCommitment, I, c_0, ss, infos, rangeSig
+    return pkMatrix, destinations, destinationsCommitment, I, c_0, ss, infos, rangeSig
 
 def prepareMG(pubsK, pubsC, inSk, inSkMask, outC, outSkMasks, index):
     # pubsK: matrix of public key (size: qxm, sec format)
@@ -343,7 +353,7 @@ def genMG(message, matrix, sk, index):
         alphaHashPub_point = hash_to_point(matrix[index][j]).pubkey.point * to_int_from_bytes(alpha[j])
         R[index][j] = VerifyingKey.from_public_point(alphaHashPub_point, curve=crv).to_string()
 
-    c_idx_1 = hashlib.sha3_256(message_bytes + list_to_bytes(L[index]) + list_to_bytes(R[index])).digest()
+    c_idx_1 = sha3.keccak_256(message_bytes + list_to_bytes(L[index]) + list_to_bytes(R[index])).digest()
 
 
 
@@ -365,7 +375,7 @@ def genMG(message, matrix, sk, index):
             R_point = hash_to_point(matrix[idx][j]).pubkey.point * to_int_from_bytes(ss[idx][j]) + c_I
             R[idx][j] = VerifyingKey.from_public_point(R_point, curve=crv).to_string()
 
-        c = hashlib.sha3_256(message_bytes + list_to_bytes(L[idx]) + list_to_bytes(R[idx])).digest();
+        c = sha3.keccak_256(message_bytes + list_to_bytes(L[idx]) + list_to_bytes(R[idx])).digest();
         if idx == n-1:
             c_0 = c
 
@@ -388,7 +398,7 @@ def genMG(message, matrix, sk, index):
             R_point = hash_to_point(matrix[index][j]).pubkey.point * to_int_from_bytes(ss[index][j]) + c_I
             R_tmp[j] = VerifyingKey.from_public_point(R_point, curve=crv).to_string()
 
-        c_tmp = hashlib.sha3_256(message_bytes + list_to_bytes(L_tmp) + list_to_bytes(R_tmp)).digest()
+        c_tmp = sha3.keccak_256(message_bytes + list_to_bytes(L_tmp) + list_to_bytes(R_tmp)).digest()
         assert L_tmp == L[index] and R_tmp == R[index], "Sanity check for computing ss[index] failed.\nAborting..."
 
     if debug:
@@ -423,7 +433,7 @@ def verifyMG(message, matrix, I, c_0, ss):
             R_point = hash_to_point(matrix[idx][j]).pubkey.point * to_int_from_bytes(ss[idx][j]) + c_I
             R[idx][j] = VerifyingKey.from_public_point(R_point, curve=crv).to_string()
 
-        c = hashlib.sha3_256(message_bytes + list_to_bytes(L[idx]) + list_to_bytes(R[idx])).digest();
+        c = sha3.keccak_256(message_bytes + list_to_bytes(L[idx]) + list_to_bytes(R[idx])).digest();
 
     return c == c_0
 
@@ -634,6 +644,7 @@ def proveRange(amount):
 
     return C_pk.to_string(), mask, rg
 
+
 def test():
     print("------  Entering the first test case. -------")
 
@@ -651,7 +662,6 @@ def test():
         assert to_int_from_bytes(newX) == x and to_int_from_bytes(newY) == y, "ECDH failed, x = %d, y = %d" % (x, y)
 
     print("------  All test passed. Well done !  -------")
-
 
 def test2():
     c = EthJsonRpc('127.0.0.1', 8080)
@@ -697,17 +707,20 @@ pub5 = "04da11a42320ae495014dd9c1c51d43d6c55ca51b7fe9ae3e1258e927e97f48be4e7a447
 # createTransaction(bytes.fromhex(pri), bytes.fromhex(pub), [bytes.fromhex(pub2), bytes.fromhex(pub3)], [1, 2], 2)
 
 
-# with open("contractAddress.txt") as f:
-#     content = f.readlines()
-# # you may also want to remove whitespace characters like `\n` at the end of each line
-# content = [x.strip() for x in content]
-# found = False
-# i = -1
-# while not found:
-#     i += 1
-#     if content[i][0:7] == 'RingCT:':
-#         found = True
-#         contractAddress = content[i][8:50]
+with open("contractAddress.txt") as f:
+    content = f.readlines()
+# you may also want to remove whitespace characters like `\n` at the end of each line
+content = [x.strip() for x in content]
+found = False
+i = 0
+while not found and i < len(content):
+    if content[i][0:7] == 'RingCT:':
+        found = True
+        contractAddress = content[i][8:50]
+    i += 1
+if not found:
+    import sys
+    sys.exit("Error message")
 
 
 
@@ -723,28 +736,26 @@ for i in range(0, len(inAmounts)):
 outAmount = [1, 6]
 
 outputPub = [VerifyingKey.from_sec(bytes.fromhex(pub)).to_string(), VerifyingKey.from_sec(bytes.fromhex(pub5)).to_string()]
-createTransaction(inPk, inSk, inAmounts, outputPub, outAmount, 2)
+matrix, destinations, destinationsCommitment, I, c_0, ss, infos, rangeSig =  createTransaction(inPk, inSk, inAmounts, outputPub, outAmount, 2)
 
 
-# create_contract()
-# print("c"+contractAddress)
-# test()
-# test2()
-matrix=[[VerifyingKey.from_sec(bytes.fromhex(pub2)).to_string(), VerifyingKey.from_sec(bytes.fromhex(pub3)).to_string()], \
-        [VerifyingKey.from_sec(bytes.fromhex(pub)).to_string(), VerifyingKey.from_sec(bytes.fromhex(pub4)).to_string()],\
-        [VerifyingKey.from_sec(bytes.fromhex(pub3)).to_string(), VerifyingKey.from_sec(bytes.fromhex(pub5)).to_string()]]
-# test2()
-# I, c_0, ss = genMG(message="hello2", matrix=matrix, \
-#     sk=[bytes.fromhex(pri), bytes.fromhex(pri4)], index=1)
-# print("-----I-----")
-# print(I)
-# print("-----c-----")
-# print(c_0)
-# print("-----ss-----")
-# print(ss)
-I = [b'\x02l:\x9e\xfce\xba\x89\x0e\xb3\x08m-\x89\xa6\xa1\x0c\xafM\xbe\xc5\x86\xf3_c\xafj\xfaCw\xa5j\xf8', b'\x03\x94\xda\xdcp0t\xbb\x98J\xb8\xb8\x92\xa7A\x81u"\xb0\x91M\x14\xc5\x0b\xb7\t\x1c\xc1\xdfVpL\xd1']
-c_0 = b'\xdd\x05\xa2\x83f\xf7\x9dDfE\xb4\xeb\xbb(\x8d\xa4\xfc\x01\xb6B\xfa\xba\x12\xf5\xecGb\x16\x0e|\xbc\xee'
-ss= [[b'\xe5\xd6\xbc\x1c\xceX#\x0fv\xf6\xd9O\xcb~i\x93\x8f\x9dz\x0c\xa5\xe8\x13\x80g=C\x81\x8b\xf8Jq', b'\x11\xf36q\x86\xf1]E\xedy\x18\xa3lH\xb8\xbd[\x87\x15\xb8\x1f\xec\xce\xd7\x04\xa5q\xdc\x1a>\x80\xd0'], [b'm\xda\x9d\r\xc9?\xf9=\xd0\xd5\xa5dyT\x9c)3\xcc\xe6X.\x9f\\\x07\xb5\x87\x935\xe2t\xf1\xc9', b'6\xac\x1dA\x8c\x8e\xe6\xa4\xf8`\xd6\x7f{jg\xb4#1\x8aA\x8e\xa1TpM\xc8~\xed\xecV\x9f\x9f'], [b'\xb6&}o"\xb8\x07]\xc3\x1c\xf6[K0\xf8\x85PN\xdf\xe1\xf3\x9e\xf4\x16S.\x8ba{\x92\xf1X', b'\x92x\xbe\x97\xbfK\x9c:\x81^\xea\xac\xbcC~\xc7\xc6\xdc\xfa\xf4*\xc7\x0e\xd8?\xb3\x8d\x8dFL\xf6\xfe']]
-# send_ring("The ring message", matrix, c_0, ss, I)
+# # matrix=[[VerifyingKey.from_sec(bytes.fromhex(pub2)).to_string(), VerifyingKey.from_sec(bytes.fromhex(pub3)).to_string()], \
+# #         [VerifyingKey.from_sec(bytes.fromhex(pub)).to_string(), VerifyingKey.from_sec(bytes.fromhex(pub4)).to_string()],\
+# #         [VerifyingKey.from_sec(bytes.fromhex(pub3)).to_string(), VerifyingKey.from_sec(bytes.fromhex(pub5)).to_string()]]
+# # I, c_0, ss = genMG(message="hello2", matrix=matrix, \
+# #     sk=[bytes.fromhex(pri), bytes.fromhex(pri4)], index=1)
+print("-----I-----")
+print(I)
+print("-----c-----")
+print(c_0)
+print("-----ss-----")
+print(ss)
+print("-----matrx-----")
+print(matrix)
+# I = [b'\xe6\xcf\x13t\x10\xd9T5RJD\xca\x8c+\xf1~(\x9c\x19\x00<\xd6(\xc3\x06#\x9e\xb8\x13D\x00\\\xdf\x8e\x8cUM\xc8\xda\x80HEd\x1d8\xf1\x8b\xdf\x05\xec\x12\xa8\xfc\xfd\xde\x84N\x0b\x0c\xdeh\x15O\xe5', b'}\x94\xf1>\xd3\xe9\xcbvw\x954@\xec\x07\xd3\xbb\xb9\x8e\xd5\xf2X\x80\xa9f=i\xb7\xa2\x12T\xa7\x9d\xa31$F\xad\x02\xe1B\xe8\xfb~\xde\xd6\x1a n\x1b\xc1\xa2f\xdfO\xd7\xd8wrr\xd14O\xa5\xf4', b"\x9b9\xec6\x03\x07\x11S\xb71W\\g\xa2\x93Gy\x99\x89\xc2$f\x08\xc4i\x8a\xcd\xc87\x0bQf\xfb\xb7\xba\xd99x\x80\x98\xed\x9e\x80\xceF\x82E\x0c*%\x90S\xe5\xde\x90\xe4'U\xa7\xa1\x8fVK\xc1"]
+# c_0 = b'x\xd5\x08)P \xe2\x91\xb9\x96f\x0e\xb56\x9aN\x834\x9ds|\xfa\x87E\xdb\x1f\x1e8\xcal\xad\xaf'
+# ss= [[b"\x1c\xdfl\xee\x11\x04\xbaz\xedz\x06\xdf\xa6\xe4Q\x830\x1e\xdb'\xd2|\xc7m\x8d\xa9?i$NI\xf6", b'\xe3\xdc\xcd\xf7\x89\x08\xdd\xf7{\xf4|\xc9G\xa7+1\xb1f\x00\xc2\xf7\xfbsnt\xa2\r\xa0o\xec\xc0\\', b"\x18\x97\xe30\x87\x1c\xfa\xd7\x7f\xfb\xb2\xe5\xd0\xe1\x08dx\x16/t\xbb@\xd8'l\xe5\x01\xc8\x1f\x0c\x0bm"], [b"\xaa\xedz'\x19CV\xf8\x859\xd2\x17\x12\x9cW\xa2b\xad\xaa\x98\x0c\x1bt\xad@.H\xa6D\x8dW(", b"\x96\x82%\x86?:,\xcb=\x8f\xc0\x96Aw\xaf\xd9\xf5\xdfl\xfe2\xa1#R\xa9'=\xd0G\x15U\x18", b'\xf3\x87u\xc8^`/\x01e\xf17\x91\xde\xc2]\xc2\xbaB\xd1B\x80\xf3s\xfdUj\xd22\x99\xa2\xb9;']]
+# matrix = [[b'BZ\xa4\xcdW\xbc\xa8\xa9P+\xb8\xdb\x1c\x0c\xc7\xbc\x8f\xf3\xf00\x92\xe4\xb0(\x9c\x81>\xb4V+\xf6\xc2\xa1hWAB4\xbe\xde\x1d\xed\xc1\x00\xb6\xf8\xd2\x92\xc4_C\xc1\xc5[\x18\x91\x08\xad\x10\x8e\xe5\xfe\x0cE', b'\x9c\x8cj6\xf6\x96\xc8B\x05\xd6\x13Q\xbd\x8d\xd7\xbeS\xd4\x9c\xb0\xcb\x8a\xa5\xa1M\x9c\xf7us\x0byd\x8b\xa5w\xb5\x99\xd9J\x9b\x8f\x97M\x05\xec\xa5\x15V\x9au\xfa\x13\xdb\xc3[\xeb4*\xc2\xa3y\xb4\x9eg'], [b'\x17\xf6\xb64\xdf\x19\xa0 8\xf7\x9d\x0c\x05Z\xa1\xdf\xab\x1d@\xdf\xdd\xd5\xccd\xdd\n\xdejQ\xcdm\xf8\x1b]\xf8\xd0\xceY\t&$\xf0\xd7\xd9\xd4E\xf8\xf0v\xc3Y\xa0\x0f\xe8\xf5\xa3|\xc3K\x0c=\xebY4', b'Y\xc4:\xd7\x88\x96\xde\x8b\xfa\xf1\x9dy(\xfc\xf2\xf3p"\x95\xe0\x1b\xeb\xdd\xdan\x07\x93)\x15eP&\xa9\xb7r \xf9\xd0F\x85I\xd6\xb0\x82\n\x8e\xc4\xf0\x87\x82\xac\xe6#\xf6\x1e\xd6\xf2K\xdc\x1e\xce\x17\xf3y']]
+send_ring("", matrix, c_0, ss, I)
 
 # test()
