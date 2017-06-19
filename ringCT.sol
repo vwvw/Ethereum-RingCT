@@ -128,40 +128,30 @@ contract RingCT {
         }
         uint256 m = mg.ssX;
         uint256 n = mg.ssY;
-        uint256[] c;
-        c.push(mg.cc);
+        uint256[] memory c = new uint256[](n+1);
+        c[0] = (mg.cc);
         for(uint256 i = 1; i < n; i++) {
-            c.push(calculateC(messageString, [m, i, c[i-1]], km, mg));
+            c[i] = (calculateC(messageString, [m, i, c[i-1]], km, mg));
         }
-        // c.push(calculateC(messageString, [m, 0, c[n-1]], km, mg));
-
-        return true;
-        // return c[0] == c[c.length];
         // return true;
+        c[n] = (calculateC(messageString, [m, 0, c[n-1]], km, mg));
+        return c[0] == c[c.length-1];
     }
 
     function calculateC (string messageString, uint256[3] restOfStuff, pubKey[100] km, mgSig mg) internal returns (uint256) {
         // restOfStuff [m, i, cBefore]
-        uint256[3][] L;
-        uint256[3][] R;
+        uint256[3][] memory L = new uint256[3][](restOfStuff[0]);
+        uint256[3][] memory R = new uint256[3][](restOfStuff[0]);
         for(uint256 j = 0; j < restOfStuff[0]; j++) {
-            L.push(ecadd(L1(j, restOfStuff, mg), L2(j, restOfStuff, km)));
-            // R1(j, restOfStuff, km, mg);
-            // R2(j, restOfStuff, mg);
-            R.push(ecadd(R1(j, restOfStuff, km, mg), R2(j, restOfStuff, mg)));
+            L[j] = (ecadd(L1(j, restOfStuff, mg), L2(j, restOfStuff, km)));
+            R[j] = (ecadd(R1(j, restOfStuff, km, mg), R2(j, restOfStuff, mg)));
         }
-        // return uint(sha256(messageString, L, R));
-        return uint(sha256(messageString));
+        // return uint256(sha3(messageString));
+        return uint256(sha3(messageString, L, R));
     }
 
     function L1 (uint256 j, uint256[3] restOfStuff, mgSig mg) internal returns (uint256[3] ) {
-        uint256 u = mg.ss[restOfStuff[1] * restOfStuff[0] + j];
-        // PrintUint(u);
-        // uint256[3] memory z = ecmul(u, G.key);
-        // uint256[3] memory uuu = [u,u,u];
-        uint256[2] memory y = G.key;
-        return ecmul(u, y);
-        // return uuu;
+        return ecmul(mg.ss[restOfStuff[1] * restOfStuff[0] + j], G.key);
     }
 
     function L2 (uint256 j, uint256[3] restOfStuff, pubKey[100] km) internal returns (uint256[3]) {
@@ -169,22 +159,13 @@ contract RingCT {
     }
 
     function R1 (uint256 j, uint256[3] restOfStuff, pubKey[100] km, mgSig mg) internal returns (uint256[3]) {
-        // uint256 u = mg.ss[restOfStuff[1] * restOfStuff[0] + j];
-        // uint256[3] memory uuu = [0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8,0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8,0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8];
-        // return uuu;
         uint256 A = mg.ss[restOfStuff[1] * restOfStuff[0] + j];
         uint256[2] memory B = [uint(sha3(km[restOfStuff[1] * restOfStuff[0] + j].key[0])), uint(sha3(km[restOfStuff[1] * restOfStuff[0] + j].key[1]))];
-        // uint256[3] memory C = ecmul(A, B);
         return ecmul(A, B);
     }
 
     function R2 (uint256 j, uint256[3] restOfStuff, mgSig mg) internal returns (uint256[3]) {
-        // uint256 u = mg.ss[restOfStuff[1] * restOfStuff[0] + j];
-        // uint256[3] memory uuu = [u,u,u];
-        // return uuu;
-        uint256 x = restOfStuff[2];
-        uint256[2] memory y = mg.II[j].key;
-        return ecmul(x, y);
+        return ecmul(restOfStuff[2], mg.II[j].key);
     }
     // function verifyRing (Ring r) returns (bool) {
     //     if(r.outPk.length != r.p.rangeSigs.length) {PrintString("Mismatched sizes of outPk and r.rangeSigs");};
@@ -345,7 +326,7 @@ contract RingCT {
 
     //point doubling for elliptic curve in jacobian coordinates
     //formula from https://en.wikibooks.org/wiki/Cryptography/Prime_Curve/Jacobian_Coordinates
-    function ecdouble(uint256[3] P)  returns(uint256[3] R){
+    function ecdouble(uint256[3] P) private constant returns(uint256[3] R){
     
         //return point at infinity
         if (P[1]==0) {
@@ -359,19 +340,14 @@ contract RingCT {
         uint256 s;
     
         s = mulmod(4,mulmod(P[0],mulmod(P[1],P[1],p),p),p);
-        uint256 x = mulmod(P[0],P[0],p);
-        uint256 xx = mulmod(3,x,p);
-        uint256 xxx = mulmod(P[2],P[2],p);
-        uint256 y = mulmod(xxx,xxx,p);
-
-        m = addmod(x,mulmod(a,y,p),p);
+        m = addmod(mulmod(3,mulmod(P[0],P[0],p),p),mulmod(a,mulmod(mulmod(P[2],P[2],p),mulmod(P[2],P[2],p),p),p),p);
         R[0] = addmod(mulmod(m,m,p),(p-mulmod(s,2,p)),p);
         R[1] = addmod(mulmod(m,addmod(s,(p-R[0]),p),p),(p-mulmod(8,mulmod(mulmod(P[1],P[1],p),mulmod(P[1],P[1],p),p),p)),p);
         R[2] = mulmod(2,mulmod(P[1],P[2],p),p);
     
         return (R);
-    
     }
+
 
     // function for elliptic curve multiplication in jacobian coordinates using Double-and-add method
     function ecmul(uint256 d, uint256[2] P_tmp) returns(uint256[3] R) {
