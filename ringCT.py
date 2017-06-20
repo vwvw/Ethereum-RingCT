@@ -64,8 +64,8 @@ def sub_2_32b(a, b):
 
 def send_ring(message, pubkey, c0, ss, II):
     print("------ Preparing to send transaction  -------")
-    filterNames = ['Log Error', 'Print string', 'Print bool', 'Print address', 'Print uint256']
-    to_keccack = ["LogErrorString(string)", "PrintString(string)", "PrintBool(bool)", "PrintAddress(address)", "PrintUint(uint256)"]
+    filterNames = ['Log Error', 'Print string', 'Print bool', 'Print address', 'Print uint256', 'PrintStringAndUint(string,uint256)']
+    to_keccack = ["LogErrorString(string)", "PrintString(string)", "PrintBool(bool)", "PrintAddress(address)", "PrintUint(uint256)", "PrintStringAndUint(string,uint256)"]
     keccack = []
     for i in range(0, len(to_keccack)):
         keccack.append(connection.web3_sha3(to_keccack[i]))
@@ -91,28 +91,7 @@ def send_ring(message, pubkey, c0, ss, II):
         IIAlligned.append([to_32_bytes_number(I.x()), to_32_bytes_number(I.y())])
 
 
-    # def to_hex_list_list(list):
-    #     l = []
-    #     for i in range(0, len(list)):
-    #         ll = []
-    #         for j in range(0, len(list[i])):
-    #             ll.append("0x"+bytes.hex(list[i][j]))
-    #         l.append(ll)
-    #     return l
-        
-    # def to_hex_list(list):
-    #     l = []
-    #     for i in range(0, len(list)):
-    #         l.append("0x"+bytes.hex(list[i]))
-    #     return l
-    # print(to_hex_list_list(pubkeysAlligned))
-    # print("-----------")
-    # print(to_hex_list(IIAlligned))
-    # print("-----------")
-    # print(to_hex_list_list(ssAlligned))
 
-
-    #function testb(string message, uint256 pkX, uint256 pkY, bytes32[2][] pkB, bytes32 c0, uint256 ssX, uint256 ssY, bytes32[] ssB, uint256 IIX, bytes32[2][] IIB) returns (bool)
     cb = connection.eth_coinbase()
     print(cb)
     results = connection.call_with_transaction(cb, contractAddress, 
@@ -124,7 +103,8 @@ def send_ring(message, pubkey, c0, ss, II):
         len(ss), len(ss[0]), ssAlligned, \
 
         len(II), IIAlligned], gas=99999999999, gas_price=1)
-    
+    print(len(ss[0])) 
+    print(len(pubkey[0])) 
     bashCommand = 'wget 127.0.0.1:8545 --background --post-data ' + results.replace(" ", "")
     import subprocess
     process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
@@ -132,13 +112,13 @@ def send_ring(message, pubkey, c0, ss, II):
     print(output)
     print(results)
     print("------Transaction sent, waiting events-------")
-    time.sleep(180)
+    time.sleep(160)
 
     for i in range(0, len(filter)):
         change = connection.eth_getFilterChanges(filter[i])
         if len(change) > 0:
             for j in range(0, len(change)):
-                print(filterNames[i] + " result " + str(j) + ":\n" + str(bytes.fromhex(change[j]["data"][2:].replace('00', ''))))
+                print(filterNames[i] + " result " + str(j) + ":\n" + str(bytes.fromhex(change[j]["data"][2:])))
 
     print("------ All events have been displayed -------")
 
@@ -247,11 +227,11 @@ def createTransaction(inPk, inSk, inAmounts, destinations, outAmounts, mixin):
 
     print("------Matrix populated, going further!-------")
 
-    I, c_0, ss = prepareMG(pkMatrix, pkMasksMatrix, inSk, inSkMasks, destinationsCommitment, outSkMasks, index)
+    (newMatrix, (I, c_0, ss)) = prepareMG(pkMatrix, pkMasksMatrix, inSk, inSkMasks, destinationsCommitment, outSkMasks, index)
 
     print("------Transaction created with succes!-------")
 
-    return pkMatrix, destinations, destinationsCommitment, I, c_0, ss, infos, rangeSig
+    return newMatrix, destinations, destinationsCommitment, I, c_0, ss, infos, rangeSig
 
 def prepareMG(pubsK, pubsC, inSk, inSkMask, outC, outSkMasks, index):
     # pubsK: matrix of public key (size: qxm, sec format)
@@ -309,7 +289,7 @@ def prepareMG(pubsK, pubsC, inSk, inSkMask, outC, outSkMasks, index):
     print("------ Done with the matrix for the MG-------")
 
     #TODO message
-    return genMG("", matrix, sk, index)
+    return (matrix, genMG("", matrix, sk, index))
 
 def list_to_bytes(list):
     ret = list[0]
@@ -410,6 +390,7 @@ def genMG(message, matrix, sk, index):
 def verifyMG(message, matrix, I, c_0, ss):
     n = len(ss)
     assert n > 0, "No ss in the ring signature. Length = 0."
+    assert len(matrix) == n, "Mismatch"
     m = len(ss[0])
     for i in range(0, n):
         assert len(ss[i]) == m, "Non rectangular ss in the ring signature."
@@ -663,39 +644,6 @@ def test():
 
     print("------  All test passed. Well done !  -------")
 
-def test2():
-    c = EthJsonRpc('127.0.0.1', 8080)
-    print(c.net_version())
-    print(c.web3_clientVersion())
-    print(c.eth_gasPrice())
-    print(c.eth_blockNumber())
-    contractAddress = "0xa8b4b6546394a808e24a168de6c0a5ea227545b4" 
-    u = c.eth_newFilter(from_block='earliest', address=contractAddress, topics=[])
-            
-    print("-----u------")
-    print(u)
-
- #function testb(string message, uint256 pkX, uint256 pkY, bytes32[2][] pkB, bytes32 c0, uint256 ssX, uint256 ssY, bytes32[] ssB, uint256 IIX, bytes32[2][] IIB) returns (bool)
-    results = c.call_with_transaction(c.eth_coinbase(), contractAddress, 
-        # function signature
-        'set_s(string)',\
-        ["hello"]
-        # ,['bool']\
-        ) #return type
-    bn = c.eth_blockNumber()
-    print(bn)
-    print(results)
-    while(c.eth_blockNumber() == bn):
-        print(c.eth_blockNumber())
-        print("waiting for deploy")
-        time.sleep(0.5)
-    while(c.eth_blockNumber() == bn+1):
-        print(c.eth_blockNumber())
-        print("waiting for event")
-        time.sleep(0.5)
-    vv = c.eth_getFilterChanges(u)
-    print("vv"+str(vv)+str(c.eth_blockNumber()))
-
 pri = "07ca500a843616b48db3618aea3e9e1174dede9b4e94b95b2170182f632ad47c"
 pri4 = "79d3372ffd4278affd69313355d38c6d90d489e4ab0bbbef9589d7cc9559ab6d"
 pri5 = "00dff8928e99bda9bb83a377e09c8bf5d110c414fa65d771b7b84797709c7dd0b1"
@@ -725,37 +673,32 @@ if not found:
 
 
 
-inAmounts = [3,4]
-inSk = []
-inPk = []
-for i in range(0, len(inAmounts)):
-    sk = to_32_bytes_number(random.randrange(crv.order))
-    inSk.append(sk)
-    inPk.append(g.from_string(sk, curve=crv).verifying_key.to_string())
+# inAmounts = [3,4]
+# inSk = []
+# inPk = []
+# for i in range(0, len(inAmounts)):
+#     sk = to_32_bytes_number(random.randrange(crv.order))
+#     inSk.append(sk)
+#     inPk.append(g.from_string(sk, curve=crv).verifying_key.to_string())
 
-outAmount = [1, 6]
+# outAmount = [1, 6]
 
-outputPub = [VerifyingKey.from_sec(bytes.fromhex(pub)).to_string(), VerifyingKey.from_sec(bytes.fromhex(pub5)).to_string()]
-matrix, destinations, destinationsCommitment, I, c_0, ss, infos, rangeSig =  createTransaction(inPk, inSk, inAmounts, outputPub, outAmount, 2)
+# outputPub = [VerifyingKey.from_sec(bytes.fromhex(pub)).to_string(), VerifyingKey.from_sec(bytes.fromhex(pub5)).to_string()]
+# matrix, destinations, destinationsCommitment, I, c_0, ss, infos, rangeSig =  createTransaction(inPk, inSk, inAmounts, outputPub, outAmount, 2)
 
 
-# # matrix=[[VerifyingKey.from_sec(bytes.fromhex(pub2)).to_string(), VerifyingKey.from_sec(bytes.fromhex(pub3)).to_string()], \
-# #         [VerifyingKey.from_sec(bytes.fromhex(pub)).to_string(), VerifyingKey.from_sec(bytes.fromhex(pub4)).to_string()],\
-# #         [VerifyingKey.from_sec(bytes.fromhex(pub3)).to_string(), VerifyingKey.from_sec(bytes.fromhex(pub5)).to_string()]]
-# # I, c_0, ss = genMG(message="hello2", matrix=matrix, \
-# #     sk=[bytes.fromhex(pri), bytes.fromhex(pri4)], index=1)
-print("-----I-----")
-print(I)
-print("-----c-----")
-print(c_0)
-print("-----ss-----")
-print(ss)
-print("-----matrx-----")
-print(matrix)
-# I = [b'\xe6\xcf\x13t\x10\xd9T5RJD\xca\x8c+\xf1~(\x9c\x19\x00<\xd6(\xc3\x06#\x9e\xb8\x13D\x00\\\xdf\x8e\x8cUM\xc8\xda\x80HEd\x1d8\xf1\x8b\xdf\x05\xec\x12\xa8\xfc\xfd\xde\x84N\x0b\x0c\xdeh\x15O\xe5', b'}\x94\xf1>\xd3\xe9\xcbvw\x954@\xec\x07\xd3\xbb\xb9\x8e\xd5\xf2X\x80\xa9f=i\xb7\xa2\x12T\xa7\x9d\xa31$F\xad\x02\xe1B\xe8\xfb~\xde\xd6\x1a n\x1b\xc1\xa2f\xdfO\xd7\xd8wrr\xd14O\xa5\xf4', b"\x9b9\xec6\x03\x07\x11S\xb71W\\g\xa2\x93Gy\x99\x89\xc2$f\x08\xc4i\x8a\xcd\xc87\x0bQf\xfb\xb7\xba\xd99x\x80\x98\xed\x9e\x80\xceF\x82E\x0c*%\x90S\xe5\xde\x90\xe4'U\xa7\xa1\x8fVK\xc1"]
-# c_0 = b'x\xd5\x08)P \xe2\x91\xb9\x96f\x0e\xb56\x9aN\x834\x9ds|\xfa\x87E\xdb\x1f\x1e8\xcal\xad\xaf'
-# ss= [[b"\x1c\xdfl\xee\x11\x04\xbaz\xedz\x06\xdf\xa6\xe4Q\x830\x1e\xdb'\xd2|\xc7m\x8d\xa9?i$NI\xf6", b'\xe3\xdc\xcd\xf7\x89\x08\xdd\xf7{\xf4|\xc9G\xa7+1\xb1f\x00\xc2\xf7\xfbsnt\xa2\r\xa0o\xec\xc0\\', b"\x18\x97\xe30\x87\x1c\xfa\xd7\x7f\xfb\xb2\xe5\xd0\xe1\x08dx\x16/t\xbb@\xd8'l\xe5\x01\xc8\x1f\x0c\x0bm"], [b"\xaa\xedz'\x19CV\xf8\x859\xd2\x17\x12\x9cW\xa2b\xad\xaa\x98\x0c\x1bt\xad@.H\xa6D\x8dW(", b"\x96\x82%\x86?:,\xcb=\x8f\xc0\x96Aw\xaf\xd9\xf5\xdfl\xfe2\xa1#R\xa9'=\xd0G\x15U\x18", b'\xf3\x87u\xc8^`/\x01e\xf17\x91\xde\xc2]\xc2\xbaB\xd1B\x80\xf3s\xfdUj\xd22\x99\xa2\xb9;']]
-# matrix = [[b'BZ\xa4\xcdW\xbc\xa8\xa9P+\xb8\xdb\x1c\x0c\xc7\xbc\x8f\xf3\xf00\x92\xe4\xb0(\x9c\x81>\xb4V+\xf6\xc2\xa1hWAB4\xbe\xde\x1d\xed\xc1\x00\xb6\xf8\xd2\x92\xc4_C\xc1\xc5[\x18\x91\x08\xad\x10\x8e\xe5\xfe\x0cE', b'\x9c\x8cj6\xf6\x96\xc8B\x05\xd6\x13Q\xbd\x8d\xd7\xbeS\xd4\x9c\xb0\xcb\x8a\xa5\xa1M\x9c\xf7us\x0byd\x8b\xa5w\xb5\x99\xd9J\x9b\x8f\x97M\x05\xec\xa5\x15V\x9au\xfa\x13\xdb\xc3[\xeb4*\xc2\xa3y\xb4\x9eg'], [b'\x17\xf6\xb64\xdf\x19\xa0 8\xf7\x9d\x0c\x05Z\xa1\xdf\xab\x1d@\xdf\xdd\xd5\xccd\xdd\n\xdejQ\xcdm\xf8\x1b]\xf8\xd0\xceY\t&$\xf0\xd7\xd9\xd4E\xf8\xf0v\xc3Y\xa0\x0f\xe8\xf5\xa3|\xc3K\x0c=\xebY4', b'Y\xc4:\xd7\x88\x96\xde\x8b\xfa\xf1\x9dy(\xfc\xf2\xf3p"\x95\xe0\x1b\xeb\xdd\xdan\x07\x93)\x15eP&\xa9\xb7r \xf9\xd0F\x85I\xd6\xb0\x82\n\x8e\xc4\xf0\x87\x82\xac\xe6#\xf6\x1e\xd6\xf2K\xdc\x1e\xce\x17\xf3y']]
+# print("-----I-----")
+# print(I)
+# print("-----c-----")
+# print(c_0)
+# print("-----ss-----")
+# print(ss)
+# print("-----matrix-----")
+# print(matrix)
+I = [b'\xbea\x08\xf5v\xb0\x9c|\x14Pq\x8fg\xc8\xe8Wu,L\xe2\x08YKsw\xf5t\x0c_6\xd8R\'\xa1@\xbdx"\xa7\xd1\x88|\xc9y\x87\x81M\x94\xa2\x08\x9d\x8e<\x8bA{\xa8x<\x00\xa8\xa6\tP', b'\xe80p@\x9f\xcbZ\x0e\xa2!\x14T\x8eu;\xdda\x91\xde@@\xd1\xf6\x8a\xd4\xba4h\xdd\xe6\x01\x9a;\xb0-I\x9c\x1c\xc8\xd8\xe8\xce1\xf6%\xef\t\x89A\xca\xf6\x7f\xbf\x7f \x1c>\xe8\x95(x\xd2\xc2\x1f', b't\xa5\x9a"\xeb3\xcc\xcb\x8b\x8e\x9e@\xb0\xab\xbb\xb2\x15Jt\xfa-\xbb\x9cyQ\xe9\xaf%5<\x7fp\xec\xc8\x0e\xc1T\xa6m\xaf\xec\xdb\xfa8\xee\x8c\xdc\x10\xde\x82Q<\xb0\xa9\x91\x8f\x86\x9d\xa6\xeb\xc42\x1a\xa0']
+c_0 = b'\x13\xbdu\xe5P\x9c\xd7n;\xf1\xc7\x15\xf5\xad.W\xaa\xa7\n\x92Z)\rU&[@\x94\xca\xd4\x98\x8b'
+ss= [[b'\xfaC/\xe7\xf9s\x07b\x9a\xbd\xa8\x89\xfd2\x0c^\x13\xcba\xe2\xdd\xeaMDP\t\xa0\x8ac\x9f\xd1\x19', b'\xef\x96\xf5/V\x84\xb3\xf2\x95\xd1tN\x8b\t\xc6~\xed\xf6E\xd4g:#*Z)4*\x84\x08\xce\xee', b'\xed\xff"=Wl[\xb6\xa2\x06\xb8?\xfb" \x14Y\x15\x0bA/9\xc2\'\xd72\xaf\xe5j\xd2\r\xe4'], [b'\xdeN\x1dW\xf2\xe4\x8e\x8e6L\xb0\x83\xd1}\xfe&\xcb\xf8{OF\xd7\xe4\x8f\x80\xb6):6S\xcd\xfc', b'\xa2\x92\xe2\xb42(\xf6Me\x88\xdf8^\x8d\xf2\xc3|\xbc\xa0\xfc\x0e\x85\x8f\r\x92z\x1f\x04\x12\xb0K]', b'\x15\x95\xcb\x94_"xD\xa5\\\xe0\x1fRE\xd9\x941\x85\xed[\xc6\xcc_\x03\x0b\xd9I\xce\xfd=\x9d7']]
+matrix = [[b'/\x90\x8b\x93\xf1\x98)y\x8e\xab\x9b[\x8d\x1c\xee\x1d\xc4\x8eV\x08\xb5\xb6h\xa1\x8b\x04eFe\xd48\x8b\x03ZG\xf24J\xf8\xc1Y\x838\x18`\xdb8\x88z\xd8\xac\xfb\xab\x18\x0f\x9b\xe3\xec(\xfb*\xf6/ ', b'-\xb4\xd1n\xdf\xb7\t\x03U\xf5\xaa\xe9\xb8\x1f\xdd#\xc8}\xc39\x08\xa1\x10g\xa1\xca\xb2\xba\xf7\xd0W\xd3\xb9\xfc\x9a\xf2\xa2\xf7T-\x97"\x04\xdd\x8b\x17y\r\x01\x7f\xeb\xac`P\xac\xc4\x80>\xff\x10W\xcf\xbe\xa4', b'\xda\xe58\xe8\tO\xde\x97\n9\x93)\xbe\xcdK\x82\x13\x1a\xec\xa8\x01\xebp\x10C\xb9Rz1\xbe\xb4\x8aL\x14\xa9\xf3W\xed\xe7\x1f$\x08\xbb\xc7:\xc00\x94\xbb\xe5<\x83p\xaba\x94dV\xb5d\xc0\xff\xe6\x83'], [b'\x0bF\x12\xf0\xa4*\x14\xaa\xb6\xe2g\x1d\x0e\nj\xc6\xcdNW~\n\xad\xd5Y/E\xe7\x1a\xac\xbf\xc4\xfb\xff?\xc9\xbf\x99.\xf8\xc2W\xc4\xda[v\xac\xd9\xe2\t\xbf\x83\xbao\xa4my\x04\xe9\xe7?c$\xe8*', b'~\xff\x08\xb7\x9c1\xab gG\x08\xeb\x80\x80\xed\xc9\x1a\xf4\xfc\x03{NF\x03j\xe5\xaa\xdf\x8f\xcel\xc9\xb9\x8db\xfb\x1bE\xdcAU\xe6k\nP\x7f\x0b\xf8K\x8b\x16sR\x01: \x02,r\xf3\xbd\xb9J\xf9', b'\xb9\xc7;f\xd6\x92\xbd\xca\x13?\xce\x06d\xea\x0e\xb8\xdfYI;|H\x15 \x0fQ\xf0\x85\xc33q\xd7\xbd\xa2\xdd.(T\xbdl_\xdb\xa0\xfaZ\xd5\x9bUf\xcbIdr\xc4*N\x03P\x85\xd5\x01#\rT']]
 send_ring("", matrix, c_0, ss, I)
 
 # test()

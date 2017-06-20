@@ -48,6 +48,7 @@ contract RingCT {
     event PrintBool(bool _value);
     event PrintAddress(address _value);
     event PrintUint(uint256 _value);
+    event PrintStringAndUint(string s, uint256 _value);
 
     // Base point (generator) G
     uint constant Gx = 0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798;
@@ -120,8 +121,21 @@ contract RingCT {
         // and a signature σ on km, m, 
         // and outputs true or false, depending on whether the signature verifies or not. 
         // For completeness, the MLSAG scheme must satisfy VER(SIGN(m,L,x),m,L)=true with overwhelming probability at security level k.
-        if(mg.ssX != pkX || mg.ssY != pkY) {
+        // PrintStringAndUint("hello", 12);
+        if(mg.ssX != pkX) {
             LogErrorString("Mismatch in the dimension of the key matrix and the ss matrix in the signature");
+            PrintStringAndUint("pkX:", pkX);
+            PrintStringAndUint("ssX:", mg.ssX);
+        }
+        if (mg.ssY != pkY) {
+            PrintBool(mg.ssY != pkY);
+            LogErrorString("2Mismatch in the dimension of the key matrix and the ss matrix in the signature");
+            PrintUint(pkY);
+            PrintUint(mg.ssY);
+            PrintStringAndUint("pkY:", pkY);
+            PrintStringAndUint("ssY:", mg.ssY);
+            PrintUint(pkY);
+            PrintUint(mg.ssY);
         }
         if(mg.ssY != mg.IIX) {
             LogErrorString("Mismatch in the dimension of the II matrix and the ss matrix in the signature");
