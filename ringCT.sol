@@ -62,30 +62,29 @@ contract RingCT {
     
     bytes32[] keyImagesUsed;
 
-    function test(string tester, string t2, uint256 x, bytes32[2][] y) returns (string, string, uint256, bytes32[2][]) {
+    function test() {
         LogErrorString("-------------------");
         PrintString("We got a nice message:");
-        PrintString(tester);
     
 
         PrintString("-------------------");
-        return (tester, t2, x, y);
     }
 
     function testb(string message, uint256 pkX, uint256 pkY, bytes32[2][] pkB, bytes32 c0, uint256 ssX, uint256 ssY, bytes32[] ssB, uint256 IIX, bytes32[2][] IIB) {
         
-        if(pkX*pkY != pkB.length) {
-           LogErrorString("Mismatch in the dimension of the key matrix");
-        }
-        PrintString(message);
+        // if(pkX*pkY != pkB.length) {
+        //    LogErrorString("Mismatch in the dimension of the key matrix");
+        //     throw;
+        // }
+        // PrintString(message);
 
-        pubKey[100] memory II;
-        for(uint i = 0; i < IIX; i++) {
-            II[i] = pubKeyConverter(IIB[i]);
-        }
-        mgSig memory mg = mgSig(ssX, ssY, convertSS(ssB), uint256(c0), IIX, II);
-        // PrintUint(mg.cc);
-        PrintBool(verifyMLSAG(message, pkX, pkY, convertPK(pkB), mg));
+        // pubKey[100] memory II;
+        // for(uint i = 0; i < IIX; i++) {
+        //     II[i] = pubKeyConverter(IIB[i]);
+        // }
+        // mgSig memory mg = mgSig(ssX, ssY, convertSS(ssB), uint256(c0), IIX, II);
+        PrintUint(1);
+        // PrintBool(verifyMLSAG(message, pkX, pkY, convertPK(pkB), mg));
     }
 
     function convertPK(bytes32[2][] pkB) internal returns (pubKey[100]) {
@@ -122,43 +121,41 @@ contract RingCT {
         // and outputs true or false, depending on whether the signature verifies or not. 
         // For completeness, the MLSAG scheme must satisfy VER(SIGN(m,L,x),m,L)=true with overwhelming probability at security level k.
         // PrintStringAndUint("hello", 12);
-        if(mg.ssX != pkX) {
+        if(mg.ssX != pkX || mg.ssY != pkY) {
             LogErrorString("Mismatch in the dimension of the key matrix and the ss matrix in the signature");
-            PrintStringAndUint("pkX:", pkX);
-            PrintStringAndUint("ssX:", mg.ssX);
-        }
-        if (mg.ssY != pkY) {
-            PrintBool(mg.ssY != pkY);
-            LogErrorString("2Mismatch in the dimension of the key matrix and the ss matrix in the signature");
-            PrintUint(pkY);
-            PrintUint(mg.ssY);
-            PrintStringAndUint("pkY:", pkY);
-            PrintStringAndUint("ssY:", mg.ssY);
-            PrintUint(pkY);
-            PrintUint(mg.ssY);
         }
         if(mg.ssY != mg.IIX) {
             LogErrorString("Mismatch in the dimension of the II matrix and the ss matrix in the signature");
         }
         uint256 m = mg.ssX;
         uint256 n = mg.ssY;
-        uint256[] memory c = new uint256[](n+1);
-        c[0] = (mg.cc);
-        for(uint256 i = 1; i < n; i++) {
-            c[i] = (calculateC(messageString, [m, i, c[i-1]], km, mg));
+        uint256[] memory c = new uint256[](n);
+        c[n - 1] = mg.cc;
+        PrintUint(mg.cc);
+        PrintUint(c[n-1]);
+        PrintUint(n-1);
+        PrintUint((i-1)%(n));
+        PrintUint(c[(i-1)%(n)]);
+        PrintUint(333333333);
+        for(uint256 i = 0; i < n; i++) {
+          c[i] = calculateC(messageString, [m, i, c[(i-1)%(n)]], km, mg);
         }
         // return true;
-        c[n] = (calculateC(messageString, [m, 0, c[n-1]], km, mg));
-        return c[0] == c[c.length-1];
+        return mg.cc == c[c.length-1];
     }
 
     function calculateC (string messageString, uint256[3] restOfStuff, pubKey[100] km, mgSig mg) internal returns (uint256) {
         // restOfStuff [m, i, cBefore]
-        uint256[3][] memory L = new uint256[3][](restOfStuff[0]);
-        uint256[3][] memory R = new uint256[3][](restOfStuff[0]);
+        uint256[2][] memory L = new uint256[2][](restOfStuff[0]);
+        uint256[2][] memory R = new uint256[2][](restOfStuff[0]);
         for(uint256 j = 0; j < restOfStuff[0]; j++) {
-            L[j] = (ecadd(L1(j, restOfStuff, mg), L2(j, restOfStuff, km)));
-            R[j] = (ecadd(R1(j, restOfStuff, km, mg), R2(j, restOfStuff, mg)));
+            L[j] = JtoA(ecadd(L1(j, restOfStuff, mg), L2(j, restOfStuff, km)));
+            PrintUint(L[j][0]);
+            PrintUint(L[j][1]);
+            // PrintUint(L[0][j]);
+            // PrintUint(L[1][j]);
+            PrintUint(uint256(1111111111111111));
+            R[j] = JtoA(ecadd(R1(j, restOfStuff, km, mg), R2(j, restOfStuff, mg)));
         }
         // return uint256(sha3(messageString));
         return uint256(sha3(messageString, L, R));
@@ -169,6 +166,15 @@ contract RingCT {
     }
 
     function L2 (uint256 j, uint256[3] restOfStuff, pubKey[100] km) internal returns (uint256[3]) {
+        PrintUint(uint256(2222222222));
+        PrintUint(uint256(restOfStuff[2]));
+        PrintUint(uint256(restOfStuff[1]));
+        PrintUint(uint256(restOfStuff[0]));
+        PrintUint(uint256(j));
+        PrintUint(uint256(km[restOfStuff[1] * restOfStuff[0] + j].key[0]));
+        PrintUint(uint256(km[restOfStuff[1] * restOfStuff[0] + j].key[1]));
+        PrintUint(uint256(JtoA(ecmul(restOfStuff[2], km[restOfStuff[1] * restOfStuff[0] + j].key))[0]));
+        PrintUint(uint256(2222222222));
         return ecmul(restOfStuff[2], km[restOfStuff[1] * restOfStuff[0] + j].key);
     }
 
@@ -393,5 +399,29 @@ contract RingCT {
         }
         return R;
     }
+
+    function invmod(uint256 a, uint p) private constant returns(uint256 invA) {
+        uint256 t=0;
+        uint256 newT=1;
+        uint256 r=p;
+        uint256 newR=a;
+        uint256 q;
+        while (newR != 0) {
+          q = r / newR;
+
+          (t, newT) = (newT, addmod(t , (p - mulmod(q, newT,p)) , p));
+          (r, newR) = (newR, r - q * newR );
+        }
+        return t;
+    }
+
+
+   function JtoA(uint256[3] P) private constant returns (uint256[2] Pnew) {
+        uint zInv = invmod(P[2],p);
+        uint zInv2 = mulmod(zInv, zInv, p);
+        Pnew[0] = mulmod(P[0], zInv2, p);
+        Pnew[1] = mulmod(P[1], mulmod(zInv,zInv2,p), p);
+    }
+
 
 }

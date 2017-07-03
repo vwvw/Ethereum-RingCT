@@ -15,6 +15,7 @@ from ethjsonrpc import EthJsonRpc
 from ethjsonrpc.constants import BLOCK_TAGS, BLOCK_TAG_EARLIEST, BLOCK_TAG_LATEST
 
 debug = True
+rangSigBool = False
 MAX_AMOUNT = 2**64;
 MAX_MIXIN = 100; 
 crv=ecdsa.SECP256k1
@@ -93,32 +94,36 @@ def send_ring(message, pubkey, c0, ss, II):
 
 
     cb = connection.eth_coinbase()
-    print(cb)
     results = connection.call_with_transaction(cb, contractAddress, 
         # function signature
+        # 'test()',\
         'testb(string,uint256,uint256,bytes32[2][],bytes32,uint256,uint256,bytes32[],uint256,bytes32[2][])',\
         [message,\
         len(pubkey), len(pubkey[0]), pubkeysAlligned,\
         c0,\
-        len(ss), len(ss[0]), ssAlligned, \
-
+        len(ss), len(ss[0]), ssAlligned,\
         len(II), IIAlligned], gas=99999999999, gas_price=1)
-    print(len(ss[0])) 
-    print(len(pubkey[0])) 
-    bashCommand = 'wget 127.0.0.1:8545 --background --post-data ' + results.replace(" ", "")
+        # [])
+    bashCommand = 'curl -X POST 127.0.0.1:8545 -m 3 --data ' + results.replace(" ", "")
     import subprocess
     process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
     output, error = process.communicate()
     print(output)
-    print(results)
+    print("ERROR: ",error)
     print("------Transaction sent, waiting events-------")
-    time.sleep(160)
+    for i in range(0, 160):
+        time.sleep(1);
+        if i%10== 0:
+            print(i)
 
     for i in range(0, len(filter)):
         change = connection.eth_getFilterChanges(filter[i])
         if len(change) > 0:
             for j in range(0, len(change)):
-                print(filterNames[i] + " result " + str(j) + ":\n" + str(bytes.fromhex(change[j]["data"][2:])))
+                if filterNames[i] == "Print uint256":
+                    print(filterNames[i] + " result " + str(j) + ":\n" + str(to_int_from_bytes(bytes.fromhex(change[j]["data"][2:]))))
+                else:
+                    print(filterNames[i] + " result " + str(j) + ":\n" + str(bytes.fromhex(change[j]["data"][2:])))
 
     print("------ All events have been displayed -------")
 
@@ -227,11 +232,14 @@ def createTransaction(inPk, inSk, inAmounts, destinations, outAmounts, mixin):
 
     print("------Matrix populated, going further!-------")
 
-    (newMatrix, (I, c_0, ss)) = prepareMG(pkMatrix, pkMasksMatrix, inSk, inSkMasks, destinationsCommitment, outSkMasks, index)
-
-    print("------Transaction created with succes!-------")
-
-    return newMatrix, destinations, destinationsCommitment, I, c_0, ss, infos, rangeSig
+    if debug:
+        (newMatrix, (L, R, I, c_0, ss)) = prepareMG(pkMatrix, pkMasksMatrix, inSk, inSkMasks, destinationsCommitment, outSkMasks, index)
+        print("------Transaction created with succes!-------")
+        return newMatrix, L, R, destinations, destinationsCommitment, I, c_0, ss, infos, rangeSig
+    else:
+        (newMatrix, (I, c_0, ss)) = prepareMG(pkMatrix, pkMasksMatrix, inSk, inSkMasks, destinationsCommitment, outSkMasks, index)
+        print("------Transaction created with succes!-------")
+        return newMatrix, destinations, destinationsCommitment, I, c_0, ss, infos, rangeSig
 
 def prepareMG(pubsK, pubsC, inSk, inSkMask, outC, outSkMasks, index):
     # pubsK: matrix of public key (size: qxm, sec format)
@@ -292,9 +300,10 @@ def prepareMG(pubsK, pubsC, inSk, inSkMask, outC, outSkMasks, index):
     return (matrix, genMG("", matrix, sk, index))
 
 def list_to_bytes(list):
-    ret = list[0]
+    # [[None, None] for x in range(m)]
+    ret = to_32_bytes_number(list[0][0]) + to_32_bytes_number(list[0][1])
     for x in range(1, len(list)):
-        ret += list[x]
+        ret += to_32_bytes_number(list[x][0]) + to_32_bytes_number(list[x][1])
     return ret
 
 def genMG(message, matrix, sk, index):
@@ -320,18 +329,19 @@ def genMG(message, matrix, sk, index):
     I = [None for x in range(m)]
     ss = [[None for x in range(m)] for y in range(n)]
     
-    L = [[None for x in range(m)] for y in range(n)] 
-    R = [[None for x in range(m)] for y in range(n)] 
+    L = [[[None, None] for x in range(m)] for y in range(n)] 
+    R = [[[None, None] for x in range(m)] for y in range(n)] 
 
     for j in range(0, m):
         skJHashPub_point = hash_to_point(matrix[index][j]).pubkey.point * to_int_from_bytes(sk[j])
         I[j] = VerifyingKey.from_public_point(skJHashPub_point, curve=crv).to_string()
  
         alpha[j] = to_32_bytes_number(random.randrange(crv.order))
-        L[index][j] = g.from_string(alpha[j], curve=crv).verifying_key.to_string()
+        LPoint = g.from_string(alpha[j], curve=crv).verifying_key.pubkey.point
+        L[index][j] = [LPoint.x(), LPoint.y()]
 
         alphaHashPub_point = hash_to_point(matrix[index][j]).pubkey.point * to_int_from_bytes(alpha[j])
-        R[index][j] = VerifyingKey.from_public_point(alphaHashPub_point, curve=crv).to_string()
+        R[index][j] = [alphaHashPub_point.x(), alphaHashPub_point.y()]
 
     c_idx_1 = sha3.keccak_256(message_bytes + list_to_bytes(L[index]) + list_to_bytes(R[index])).digest()
 
@@ -348,12 +358,12 @@ def genMG(message, matrix, sk, index):
             c_PubK = VerifyingKey.from_string(matrix[idx][j], curve=crv).pubkey.point * to_int_from_bytes(c)
             sj_G = g.from_string(ss[idx][j], curve=crv)
             L_point = c_PubK + sj_G.verifying_key.pubkey.point
-            L[idx][j] = VerifyingKey.from_public_point(L_point, curve=crv).to_string()
+            L[idx][j] = [L_point.x(), L_point.y()]
 
 
             c_I = VerifyingKey.from_string(I[j], curve=crv).pubkey.point * to_int_from_bytes(c)
             R_point = hash_to_point(matrix[idx][j]).pubkey.point * to_int_from_bytes(ss[idx][j]) + c_I
-            R[idx][j] = VerifyingKey.from_public_point(R_point, curve=crv).to_string()
+            R[idx][j] = [R_point.x(), R_point.y()]
 
         c = sha3.keccak_256(message_bytes + list_to_bytes(L[idx]) + list_to_bytes(R[idx])).digest();
         if idx == n-1:
@@ -363,8 +373,8 @@ def genMG(message, matrix, sk, index):
 
     if debug:
         # sanity check:
-        L_tmp = [None for x in range(m)]
-        R_tmp = [None for x in range(m)]
+        L_tmp = [[None, None] for x in range(m)]
+        R_tmp = [[None, None] for x in range(m)]
 
         for j in range(0, m):
             ss[index][j] = to_32_bytes_number((to_int_from_bytes(alpha[j]) - to_int_from_bytes(c) * to_int_from_bytes(sk[j])) % crv.order)
@@ -372,20 +382,21 @@ def genMG(message, matrix, sk, index):
             c_PubK = VerifyingKey.from_string(matrix[index][j], curve=crv).pubkey.point * to_int_from_bytes(c)
             sj_G = g.from_string(ss[index][j], curve=crv)
             L_point = c_PubK + sj_G.verifying_key.pubkey.point
-            L_tmp[j] = VerifyingKey.from_public_point(L_point, curve=crv).to_string()
+            L_tmp[j] = [L_point.x(), L_point.y()]
 
             c_I = VerifyingKey.from_string(I[j], curve=crv).pubkey.point * to_int_from_bytes(c)
             R_point = hash_to_point(matrix[index][j]).pubkey.point * to_int_from_bytes(ss[index][j]) + c_I
-            R_tmp[j] = VerifyingKey.from_public_point(R_point, curve=crv).to_string()
+            R_tmp[j] = [R_point.x(), R_point.y()]
 
         c_tmp = sha3.keccak_256(message_bytes + list_to_bytes(L_tmp) + list_to_bytes(R_tmp)).digest()
         assert L_tmp == L[index] and R_tmp == R[index], "Sanity check for computing ss[index] failed.\nAborting..."
 
     if debug:
         assert verifyMG(message, matrix, I, c_0, ss), "Ring verification failed.\nAborting..."
-        print("------ Done with verifying the MLSAG  -------")
-    
-    return I, c_0, ss
+        print("--------- Done with verifying the MLSAG  -------")
+        return L, R, I, c_0, ss
+    else:
+        return I, c_0, ss
 
 def verifyMG(message, matrix, I, c_0, ss):
     n = len(ss)
@@ -399,20 +410,24 @@ def verifyMG(message, matrix, I, c_0, ss):
 
     message_bytes = bytes(message, 'UTF-8')
 
-    L = [[None for x in range(m)] for y in range(n)] 
-    R = [[None for x in range(m)] for y in range(n)] 
+    L = [[[None, None] for x in range(m)] for y in range(n)] 
+    R = [[[None, None] for x in range(m)] for y in range(n)] 
 
     c = c_0
     for idx in range(0, n): 
         for j in range(0, m):
             c_PubK = VerifyingKey.from_string(matrix[idx][j], curve=crv).pubkey.point * to_int_from_bytes(c)
             sj_G = g.from_string(ss[idx][j], curve=crv)
+            print("----- " + str(idx * m + j) + "")
+            print(str(c_PubK.x()))
+            print(str(c_PubK.y()))
+            print("......")
             L_point = c_PubK + sj_G.verifying_key.pubkey.point
-            L[idx][j] = VerifyingKey.from_public_point(L_point, curve=crv).to_string()
+            L[idx][j] = [L_point.x(), L_point.y()]
 
             c_I = VerifyingKey.from_string(I[j], curve=crv).pubkey.point * to_int_from_bytes(c)
             R_point = hash_to_point(matrix[idx][j]).pubkey.point * to_int_from_bytes(ss[idx][j]) + c_I
-            R[idx][j] = VerifyingKey.from_public_point(R_point, curve=crv).to_string()
+            R[idx][j] = [R_point.x(), R_point.y()]
 
         c = sha3.keccak_256(message_bytes + list_to_bytes(L[idx]) + list_to_bytes(R[idx])).digest();
 
@@ -598,14 +613,15 @@ def proveRange(amount):
             assert g.from_string(ai[i]).verifying_key.to_string() == CiH[i], \
                 "Sanity check failed in proveRange !" + bytes.hex(g.from_string(ai[i]).verifying_key.to_string()) +\
                 " ---- " + bytes.hex(CiH[i])
+    if rangSigBool == True:
+        L1, s2, s = GenASNL(ai, Ci, CiH, bb)
+        if debug:
+            VerASNL(Ci, CiH, L1, s2, s)
 
-    L1, s2, s = GenASNL(ai, Ci, CiH, bb)
-    if debug:
-        VerASNL(Ci, CiH, L1, s2, s)
-
-
-    asig = [L1, s2, s]
-    rg = [Ci, asig]
+        asig = [L1, s2, s]
+        rg = [Ci, asig]
+    else:
+        rg = 1
 
     C_point = VerifyingKey.from_string(Ci[0]).pubkey.point
     for i in range(1, len(Ci)):
@@ -684,7 +700,7 @@ if not found:
 # outAmount = [1, 6]
 
 # outputPub = [VerifyingKey.from_sec(bytes.fromhex(pub)).to_string(), VerifyingKey.from_sec(bytes.fromhex(pub5)).to_string()]
-# matrix, destinations, destinationsCommitment, I, c_0, ss, infos, rangeSig =  createTransaction(inPk, inSk, inAmounts, outputPub, outAmount, 2)
+# matrix, L, R, destinations, destinationsCommitment, I, c_0, ss, infos, rangeSig =  createTransaction(inPk, inSk, inAmounts, outputPub, outAmount, 2)
 
 
 # print("-----I-----")
@@ -695,10 +711,40 @@ if not found:
 # print(ss)
 # print("-----matrix-----")
 # print(matrix)
+# print("-----L-----")
+# print(L)
+# print("-----R-----")
+# print(R)
 I = [b'\xbea\x08\xf5v\xb0\x9c|\x14Pq\x8fg\xc8\xe8Wu,L\xe2\x08YKsw\xf5t\x0c_6\xd8R\'\xa1@\xbdx"\xa7\xd1\x88|\xc9y\x87\x81M\x94\xa2\x08\x9d\x8e<\x8bA{\xa8x<\x00\xa8\xa6\tP', b'\xe80p@\x9f\xcbZ\x0e\xa2!\x14T\x8eu;\xdda\x91\xde@@\xd1\xf6\x8a\xd4\xba4h\xdd\xe6\x01\x9a;\xb0-I\x9c\x1c\xc8\xd8\xe8\xce1\xf6%\xef\t\x89A\xca\xf6\x7f\xbf\x7f \x1c>\xe8\x95(x\xd2\xc2\x1f', b't\xa5\x9a"\xeb3\xcc\xcb\x8b\x8e\x9e@\xb0\xab\xbb\xb2\x15Jt\xfa-\xbb\x9cyQ\xe9\xaf%5<\x7fp\xec\xc8\x0e\xc1T\xa6m\xaf\xec\xdb\xfa8\xee\x8c\xdc\x10\xde\x82Q<\xb0\xa9\x91\x8f\x86\x9d\xa6\xeb\xc42\x1a\xa0']
 c_0 = b'\x13\xbdu\xe5P\x9c\xd7n;\xf1\xc7\x15\xf5\xad.W\xaa\xa7\n\x92Z)\rU&[@\x94\xca\xd4\x98\x8b'
 ss= [[b'\xfaC/\xe7\xf9s\x07b\x9a\xbd\xa8\x89\xfd2\x0c^\x13\xcba\xe2\xdd\xeaMDP\t\xa0\x8ac\x9f\xd1\x19', b'\xef\x96\xf5/V\x84\xb3\xf2\x95\xd1tN\x8b\t\xc6~\xed\xf6E\xd4g:#*Z)4*\x84\x08\xce\xee', b'\xed\xff"=Wl[\xb6\xa2\x06\xb8?\xfb" \x14Y\x15\x0bA/9\xc2\'\xd72\xaf\xe5j\xd2\r\xe4'], [b'\xdeN\x1dW\xf2\xe4\x8e\x8e6L\xb0\x83\xd1}\xfe&\xcb\xf8{OF\xd7\xe4\x8f\x80\xb6):6S\xcd\xfc', b'\xa2\x92\xe2\xb42(\xf6Me\x88\xdf8^\x8d\xf2\xc3|\xbc\xa0\xfc\x0e\x85\x8f\r\x92z\x1f\x04\x12\xb0K]', b'\x15\x95\xcb\x94_"xD\xa5\\\xe0\x1fRE\xd9\x941\x85\xed[\xc6\xcc_\x03\x0b\xd9I\xce\xfd=\x9d7']]
 matrix = [[b'/\x90\x8b\x93\xf1\x98)y\x8e\xab\x9b[\x8d\x1c\xee\x1d\xc4\x8eV\x08\xb5\xb6h\xa1\x8b\x04eFe\xd48\x8b\x03ZG\xf24J\xf8\xc1Y\x838\x18`\xdb8\x88z\xd8\xac\xfb\xab\x18\x0f\x9b\xe3\xec(\xfb*\xf6/ ', b'-\xb4\xd1n\xdf\xb7\t\x03U\xf5\xaa\xe9\xb8\x1f\xdd#\xc8}\xc39\x08\xa1\x10g\xa1\xca\xb2\xba\xf7\xd0W\xd3\xb9\xfc\x9a\xf2\xa2\xf7T-\x97"\x04\xdd\x8b\x17y\r\x01\x7f\xeb\xac`P\xac\xc4\x80>\xff\x10W\xcf\xbe\xa4', b'\xda\xe58\xe8\tO\xde\x97\n9\x93)\xbe\xcdK\x82\x13\x1a\xec\xa8\x01\xebp\x10C\xb9Rz1\xbe\xb4\x8aL\x14\xa9\xf3W\xed\xe7\x1f$\x08\xbb\xc7:\xc00\x94\xbb\xe5<\x83p\xaba\x94dV\xb5d\xc0\xff\xe6\x83'], [b'\x0bF\x12\xf0\xa4*\x14\xaa\xb6\xe2g\x1d\x0e\nj\xc6\xcdNW~\n\xad\xd5Y/E\xe7\x1a\xac\xbf\xc4\xfb\xff?\xc9\xbf\x99.\xf8\xc2W\xc4\xda[v\xac\xd9\xe2\t\xbf\x83\xbao\xa4my\x04\xe9\xe7?c$\xe8*', b'~\xff\x08\xb7\x9c1\xab gG\x08\xeb\x80\x80\xed\xc9\x1a\xf4\xfc\x03{NF\x03j\xe5\xaa\xdf\x8f\xcel\xc9\xb9\x8db\xfb\x1bE\xdcAU\xe6k\nP\x7f\x0b\xf8K\x8b\x16sR\x01: \x02,r\xf3\xbd\xb9J\xf9', b'\xb9\xc7;f\xd6\x92\xbd\xca\x13?\xce\x06d\xea\x0e\xb8\xdfYI;|H\x15 \x0fQ\xf0\x85\xc33q\xd7\xbd\xa2\xdd.(T\xbdl_\xdb\xa0\xfaZ\xd5\x9bUf\xcbIdr\xc4*N\x03P\x85\xd5\x01#\rT']]
 send_ring("", matrix, c_0, ss, I)
+
+
+# ----- 0
+# 8955515059442627937119277923084695121183531166637988515491781953413853710466
+# 85093565900729833880867452635591433784983679483565181586650656073176205508116
+# ......
+# ----- 1
+# 99737211793083466075563139314047785250131718770706766226220344871222536026746
+# 38914001218778009134889272146098251159657070855453187619443794997538222728832
+# ......
+# ----- 2
+# 112902926035461668736757297020855394345791274650935694990442141553609826672419
+# 28272457819243702886593168364825342995021979084517357621094304406700690530218
+# ......
+# ----- 3
+# 80690803069342436238008052760562390328227245935594756862444550797763564801651
+# 80091489518137908474053606953091483323063685264380587286199094583809468174644
+# ......
+# ----- 4
+# 27561456431729341592868650930735810413974410197274993692606570820883846630222
+# 54700877444407454812677362651381762121437267690923939248383650080144707029558
+# ......
+# ----- 5
+# 67353310436332560887933446838033942849053589485827459585065697229564056617115
+# 53512804365477417824969382280009883457950763818879959812943611661852363807099
+# ......
 
 # test()
