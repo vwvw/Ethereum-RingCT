@@ -1,9 +1,5 @@
-pragma solidity ^0.4.11;
+ pragma solidity ^0.4.11;
 
-import './Curve.sol';
-import './ECCMath.sol';
-import './Secp256k1Curve.sol';
-import './Secp256k1.sol';
 
 contract RingCT {
 
@@ -20,7 +16,7 @@ contract RingCT {
         bytes32 ee;
     }
     
-    //just contains the necessary keys to represent MLSAG sigs
+    //just contains the necessary keys to represent MLSAG. sigs
     //c.f. http://eprint.iacr.org/2015/1098
     struct mgSig {
         uint256 ssX; 
@@ -70,21 +66,27 @@ contract RingCT {
         PrintString("-------------------");
     }
 
+    function y () {
+        PrintUint(uint256(1));
+        // PrintUint(JtoA(ecmul(uint256(71449910333075107539383320123832160761226081732216163042225240336241879234277), G.key))[1]);
+        
+    }
+
     function testb(string message, uint256 pkX, uint256 pkY, bytes32[2][] pkB, bytes32 c0, uint256 ssX, uint256 ssY, bytes32[] ssB, uint256 IIX, bytes32[2][] IIB) {
         
-        // if(pkX*pkY != pkB.length) {
-        //    LogErrorString("Mismatch in the dimension of the key matrix");
-        //     throw;
-        // }
-        // PrintString(message);
+        if(pkX*pkY != pkB.length) {
+           LogErrorString("Mismatch in the dimension of the key matrix");
+           return;
+        }
+        PrintString(message);
 
-        // pubKey[100] memory II;
-        // for(uint i = 0; i < IIX; i++) {
-        //     II[i] = pubKeyConverter(IIB[i]);
-        // }
-        // mgSig memory mg = mgSig(ssX, ssY, convertSS(ssB), uint256(c0), IIX, II);
-        PrintUint(1);
-        // PrintBool(verifyMLSAG(message, pkX, pkY, convertPK(pkB), mg));
+        pubKey[100] memory II;
+        for(uint i = 0; i < IIX; i++) {
+            II[i] = pubKeyConverter(IIB[i]);
+        }
+        mgSig memory mg = mgSig(ssX, ssY, convertSS(ssB), uint256(c0), IIX, II);
+        // PrintUint(1);
+        PrintBool(verifyMLSAG(message, pkX, pkY, convertPK(pkB), mg));
     }
 
     function convertPK(bytes32[2][] pkB) internal returns (pubKey[100]) {
@@ -131,20 +133,20 @@ contract RingCT {
         uint256 n = mg.ssY;
         uint256[] memory c = new uint256[](n);
         c[n - 1] = mg.cc;
-        PrintUint(mg.cc);
-        PrintUint(c[n-1]);
-        PrintUint(n-1);
-        PrintUint((i-1)%(n));
-        PrintUint(c[(i-1)%(n)]);
-        PrintUint(333333333);
+        // PrintUint(mg.cc);
+        // PrintUint(c[n-1]);
+        // PrintUint(n-1);
+        // PrintUint((i-1)%(n+1));
+        // PrintUint(c[(i-1)%(n)]);
+        // PrintUint(333333333);
         for(uint256 i = 0; i < n; i++) {
-          c[i] = calculateC(messageString, [m, i, c[(i-1)%(n)]], km, mg);
+          c[i] = calculateC(messageString, [m, i, c[(i+n-1)%(n)]], km, mg);
         }
         // return true;
         return mg.cc == c[c.length-1];
     }
 
-    function calculateC (string messageString, uint256[3] restOfStuff, pubKey[100] km, mgSig mg) internal returns (uint256) {
+    function calculateC (string messageString, uint256[3] restOfStuff, pubKey[100] km, mgSig mg) internal returns (uint256 c) {
         // restOfStuff [m, i, cBefore]
         uint256[2][] memory L = new uint256[2][](restOfStuff[0]);
         uint256[2][] memory R = new uint256[2][](restOfStuff[0]);
@@ -152,40 +154,61 @@ contract RingCT {
             L[j] = JtoA(ecadd(L1(j, restOfStuff, mg), L2(j, restOfStuff, km)));
             PrintUint(L[j][0]);
             PrintUint(L[j][1]);
-            // PrintUint(L[0][j]);
-            // PrintUint(L[1][j]);
             PrintUint(uint256(1111111111111111));
             R[j] = JtoA(ecadd(R1(j, restOfStuff, km, mg), R2(j, restOfStuff, mg)));
+            PrintUint(R[j][0]);
+            PrintUint(R[j][1]);
+            PrintUint(uint256(2222222222222222));
         }
         // return uint256(sha3(messageString));
-        return uint256(sha3(messageString, L, R));
+        c =  uint256(sha3(messageString, L, R));
+        PrintUint(8888888);
+        PrintUint(c);
+        PrintUint(8888888);
+        return c;
     }
 
-    function L1 (uint256 j, uint256[3] restOfStuff, mgSig mg) internal returns (uint256[3] ) {
-        return ecmul(mg.ss[restOfStuff[1] * restOfStuff[0] + j], G.key);
+    function L1 (uint256 j, uint256[3] restOfStuff, mgSig mg) internal returns (uint256[3] res) {
+        GA = [Gx, Gy];
+        G = pubKey(GA);
+        res = ecmul(mg.ss[restOfStuff[1] * restOfStuff[0] + j], G.key);
+        PrintUint(3333333);
+        PrintUint(JtoA(res)[0]);
+        PrintUint(JtoA(res)[1]);
+        PrintUint(3333333);
+        return res;
     }
 
-    function L2 (uint256 j, uint256[3] restOfStuff, pubKey[100] km) internal returns (uint256[3]) {
-        PrintUint(uint256(2222222222));
-        PrintUint(uint256(restOfStuff[2]));
-        PrintUint(uint256(restOfStuff[1]));
-        PrintUint(uint256(restOfStuff[0]));
-        PrintUint(uint256(j));
-        PrintUint(uint256(km[restOfStuff[1] * restOfStuff[0] + j].key[0]));
-        PrintUint(uint256(km[restOfStuff[1] * restOfStuff[0] + j].key[1]));
-        PrintUint(uint256(JtoA(ecmul(restOfStuff[2], km[restOfStuff[1] * restOfStuff[0] + j].key))[0]));
-        PrintUint(uint256(2222222222));
-        return ecmul(restOfStuff[2], km[restOfStuff[1] * restOfStuff[0] + j].key);
+    function L2 (uint256 j, uint256[3] restOfStuff, pubKey[100] km) internal returns (uint256[3] res) {
+        res =  ecmul(restOfStuff[2], km[restOfStuff[1] * restOfStuff[0] + j].key);
+        PrintUint(4444444);
+        PrintUint(JtoA(res)[0]);
+        PrintUint(JtoA(res)[1]);
+        PrintUint(4444444);
+        return res;
     }
 
-    function R1 (uint256 j, uint256[3] restOfStuff, pubKey[100] km, mgSig mg) internal returns (uint256[3]) {
+    function R1 (uint256 j, uint256[3] restOfStuff, pubKey[100] km, mgSig mg) internal returns (uint256[3] res) {
         uint256 A = mg.ss[restOfStuff[1] * restOfStuff[0] + j];
-        uint256[2] memory B = [uint(sha3(km[restOfStuff[1] * restOfStuff[0] + j].key[0])), uint(sha3(km[restOfStuff[1] * restOfStuff[0] + j].key[1]))];
-        return ecmul(A, B);
+        uint256 B = uint(sha256(km[restOfStuff[1] * restOfStuff[0] + j].key));
+        GA = [Gx, Gy];
+        G = pubKey(GA);
+        uint256[2] memory C = JtoA(ecmul(B, G.key));
+        res = ecmul(A, C);
+        PrintUint(5555555);
+        PrintUint(JtoA(res)[0]);
+        PrintUint(JtoA(res)[1]);
+        PrintUint(5555555);
+        return res;
     }
 
-    function R2 (uint256 j, uint256[3] restOfStuff, mgSig mg) internal returns (uint256[3]) {
-        return ecmul(restOfStuff[2], mg.II[j].key);
+    function R2 (uint256 j, uint256[3] restOfStuff, mgSig mg) internal returns (uint256[3] res) {
+        res = ecmul(restOfStuff[2], mg.II[j].key);
+        PrintUint(6666666);
+        PrintUint(JtoA(res)[0]);
+        PrintUint(JtoA(res)[1]);
+        PrintUint(6666666);
+        return res;
     }
     // function verifyRing (Ring r) returns (bool) {
     //     if(r.outPk.length != r.p.rangeSigs.length) {PrintString("Mismatched sizes of outPk and r.rangeSigs");};
