@@ -99,14 +99,13 @@ def send_ring(message, pubkey, c0, ss, II):
 
     cb = connection.eth_coinbase()
     results = connection.call_with_transaction(cb, contractAddress, 
-        # function signature
-        # 'y()',[])
-        'testb(string,uint256,uint256,bytes32[2][],bytes32,uint256,uint256,bytes32[],uint256,bytes32[2][])',\
-        [message,\
-        len(pubkey), len(pubkey[0]), pubkeysAlligned,\
-        c0,\
-        len(ss), len(ss[0]), ssAlligned,\
-        len(II), IIAlligned], gas=99999999999, gas_price=1)
+        'y()',[])
+        # 'testb(string,uint256,uint256,bytes32[2][],bytes32,uint256,uint256,bytes32[],uint256,bytes32[2][])',\
+        # [message,\
+        # len(pubkey), len(pubkey[0]), pubkeysAlligned,\
+        # c0,\
+        # len(ss), len(ss[0]), ssAlligned,\
+        # len(II), IIAlligned], gas=99999999999, gas_price=1)
     bashCommand = 'curl -X POST 127.0.0.1:8545 -m 3 --data ' + results.replace(" ", "")
     import subprocess
     process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
@@ -114,7 +113,7 @@ def send_ring(message, pubkey, c0, ss, II):
     print(output)
     print("ERROR: ",error)
     print("------Transaction sent, waiting events-------")
-    for i in range(0, 200):
+    for i in range(0, 2):
         time.sleep(1);
         if i%10== 0:
             print(i)
@@ -453,9 +452,12 @@ def verifyMG(message, matrix, I, c_0, ss):
             R_point = p + c_I
             R[idx][j] = [R_point.x(), R_point.y()]
 
+        print(L[idx])
+        print(R[idx])
+
         c = sha3.keccak_256(message_bytes + list_to_bytes(L[idx]) + list_to_bytes(R[idx])).digest();
         print("CCCCCCCC = ", end="")
-        print(str(int.from_bytes(c)))
+        print(str(int.from_bytes(c, 'big')))
 
     return c == c_0
 
@@ -686,6 +688,22 @@ def test():
 
     print("------  All test passed. Well done !  -------")
 
+
+with open("contractAddress.txt") as f:
+    content = f.readlines()
+# you may also want to remove whitespace characters like `\n` at the end of each line
+content = [x.strip() for x in content]
+found = False
+i = 0
+while not found and i < len(content):
+    if content[i][0:7] == 'RingCT:':
+        found = True
+        contractAddress = content[i][8:50]
+    i += 1
+if not found:
+    import sys
+    sys.exit("Error message")
+upu = 0
 pri = "07ca500a843616b48db3618aea3e9e1174dede9b4e94b95b2170182f632ad47c"
 pri4 = "79d3372ffd4278affd69313355d38c6d90d489e4ab0bbbef9589d7cc9559ab6d"
 pri5 = "00dff8928e99bda9bb83a377e09c8bf5d110c414fa65d771b7b84797709c7dd0b1"
@@ -697,24 +715,10 @@ pub5 = "04da11a42320ae495014dd9c1c51d43d6c55ca51b7fe9ae3e1258e927e97f48be4e7a447
 # createTransaction(bytes.fromhex(pri), bytes.fromhex(pub), [bytes.fromhex(pub2), bytes.fromhex(pub3)], [1, 2], 2)
 
 
-# with open("contractAddress.txt") as f:
-#     content = f.readlines()
-# # you may also want to remove whitespace characters like `\n` at the end of each line
-# content = [x.strip() for x in content]
-# found = False
-# i = 0
-# while not found and i < len(content):
-#     if content[i][0:7] == 'RingCT:':
-#         found = True
-#         contractAddress = content[i][8:50]
-#     i += 1
-# if not found:
-#     import sys
-#     sys.exit("Error message")
 
 
 
-
+# helloashjdagjdlas = []
 # inAmounts = [3,4]
 # inSk = []
 # inPk = []
@@ -727,7 +731,7 @@ pub5 = "04da11a42320ae495014dd9c1c51d43d6c55ca51b7fe9ae3e1258e927e97f48be4e7a447
 
 # outputPub = [VerifyingKey.from_sec(bytes.fromhex(pub)).to_string(), VerifyingKey.from_sec(bytes.fromhex(pub5)).to_string()]
 # matrix, L, R, destinations, destinationsCommitment, I, c, ss, infos, rangeSig =  createTransaction(inPk, inSk, inAmounts, outputPub, outAmount, 2)
-
+# upu = 1;
 
 # print("I = ", end='')
 # print(I)
@@ -741,12 +745,15 @@ pub5 = "04da11a42320ae495014dd9c1c51d43d6c55ca51b7fe9ae3e1258e927e97f48be4e7a447
 # print(L)
 # print("R = ", end='')
 # print(R)
-I = [b'\x91\x8e\xc1zmI\xf3\xe1\xeb\x96\x85\xea?\xd3w\x80\x86\xb8\xe2\xd9\x07\xfe\xe1\xa3\xb2\xfd\xfb\xd8\x0e\x91\x18\xfaxJ\x04\x079\xfc!\xa9\xa3\xd5\r#\xf6\xbf\x11\xbd\xc3\xe6\xdd\xc5:\x1b\xce+\xed\xa18\x9c\xec\xdf\x8a\xaf', b'Zj\n!U\xcd\x9b:\x82\xda\r\xd9+O\xe4AX\xcff\x8d%\xe6/4fd\xc547\\\xc8)\x02\xb9|\xb8\x81t\x1c\xc3;\xcbF\xb9\xda\xa6\x19\x8e\xcbo/\xf3`\xc8\xe8\xccBPv~\xc9\xc6at', b'Jj\x8f\xc2\xb3\x8c\x13+\x1b\x15\xfeu\x0f\xbcj\x90&|\x12\x82\x08f\xc6&\xe7\xb2\x98B`\xa7\xd4z,\x91\xf2KqG\x02\xbf\xf6\x02\xab\xadE\xc9\xb7zq\xc7\xac\xeeD\xae-\xdd\x17A\x15\x8aj\xba\x1d\xe7']
-c = b'\x8cF\x9e\x18\xe6\xc1\xc3\x10q,\x87Xy~\x11\t\xc0?\x9c\x95\xba\th\xa3\n\xb1E\xfd-xU\xee'
-ss = [[b'\xfe{H\xaa\x1aSA$\x96F\x8b\xc6\xf2\xe5x\x98\xfbO!\xca\xa3\xb5v\x0e\x9d\xc1 \xce\xb4Y&+', b'\t\xee\xc3>!\xeaNO*Fh\xa9\xa3|\x88\x91r\tBV+\x80\x1a\x82\xae\xbdJ\xbb\xca7\x9f\x03', b"\xecZQ\x94'\xe2\r.\xe4\x84\xf5\xb7)\x8b\x87\x02\xd4(\xcd\x13\x84\x0e,%\x06(\x92\xeb\x0e\x84\xe3\xf3"], [b'\x02\x95\xe3\x811\xe8\xfbwre\x9a\xed\xe6\xf9\xc6\xd9\xf1*\x9dfsW\x84gH\r\xa4c\xdf\xdcm\xcf', b'\xaa\xc6\xb2\x81\x86\x00>\x08\x8c\xcd\xdd\xf4\x07]4\x06G\xefx\xf3RyA\xce\x8f\xe1k=t\x95V\xb5', b'\xcbN]\xbc\xc9aO\x1a\xaa\xdcpJ\x1a\xf1\x18h\xc7\x92L\xd6\xc7\xb0N\xc4A\xb3l%%\x96\xc8w']]
-matrix = [[b'\x83\x8e\xea\xa8.\x8a\xcd\x95-\x82g\x95\xb4\xfdGQ\x13|Z\xbaHe\xb8>v\x03\ruK6xp\xad\xb9T\xb5\x8f$\xc8m\x16\\\x926\xd8\x81\x967?"\xc6\x95\xd1\xf94\xd6\xdd\xd6\xde\xb9QV_\xd2', b'\xa5\x84KFO\xd8V\x94\x92g:\xae!L\x07\xd8?\xf7\x0b\xe5\xed\xd0\x99\xe4\x9a\xa9\x94\x1e\xc4e\xe2t\x16r\xb1\xb4g\x0f\xbb\x13\x12\x0e\x99\xb6,\xadch\xfc\xe7o\x83 \x9d\x92\xbd\xfb\xa4m\xa9Ll\xce\x97', b'"~\\2\xbea|B/\xbc\xf7|\x99(\xfc\x90\xbe\xc1\x15\xd4\xe1\xc5\x7f\xc0E\x91\xae\xbe<4\xf4\xd0\nc\xff\x11{\xbfo\x81\xb1\x15F\xe0"\x19\'\xd3\x16{M\xb7\x1f\x01a\xb9VKZ\xdc\xc8\x00(\xfd'], [b'\xc3l\x1d\xd8\xa6"\xe2i.m\xaf\xd6\xb2\x1d?l\xca\x95\xe8\\:%\xd6\x1c\xfb\xb4\xb1\x8e\xc6\xb8i/\xcc&7\x06\x81\xf6e[\xb23\x93\xc1\x98\xec\x94\x1e.Ac\xb4\x13\xf2\xeftR\x0b\xd6\x021\xeb\xcb\xe4', b'\xd6z\xb3\x82\xe9J\xe9?:\xdcV\xcc\x0c\x82\xcb\xb8?\xbb\xfe\xf1S\xea\xe8?\xc5\x8d\x0e\xabgR\xb6\xa0\xb7S\x0c\xb3\x948\xb9\xe8\xef28\xdb\x07\x19\xee]>-\xaa\xea~\xc6\x84o\xa3\xb6\xf4\xb8 \x1c\x99\r', b'\x0f5LV\xab\xde\xf7\x9d-6\x19\xee\r\xfc\x91\xb8`]\xed\xb5\x13ftGI\x1e,-\xd4\x9e\xfd\xb1~B\xce\xee8X&\x83\xf4\x1f\xda\xa2\x0eu\x84\xec\xf1\x8e\x91b\xef\xd8@r\xd1\xb3u\x10D\x06\xbb\xad']]
-L = [[[75148441718093911093699265596595011891035690438045931474643057574137556167782, 84739144058733636519595151843306303651724619932316631317069372562615704548185], [36784820971120095994093557556704311148949345709377824388430505346592798585990, 16057742365979431381680357975770848778509610240762932265368682853282876069380], [94589466106114668891674682916584156112676760297700771796726523219520978530154, 57919896335080707081889889715128561100111063335759352388463264443091984563300]], [[99888744237355008543512857094857782212046167400882338507486491626237913195974, 60229276645013004795125227975056596894463495518335341750787980014400072638751], [78228094889104920350064451434167789844961074751446542911988684949760512615878, 89632181898210072562012896239884533880883773534592981556418433744667610213818], [13951688536512514926099771154175299040518332704493617534109449052874923310986, 3180525789243581493554610254111259482911904409848420939789486024828398114180]]]
-R = [[[80860683051483147187576854420906898390755022413253239943771056679123387775482, 23369161977150621357533360624103072826345397485256687996933763508054302582133], [101516620052698031207786929998565293167425704692177857430440012409146294700097, 59837914238284665309268481214172114692620528544936088448500386075512547468779], [62419719125379616810065053108781791752070492998926665605081560458471260653588, 75083362584239115944036822117242030411549246494018300357189133647871991406078]], [[98850925056643976589342831133144315891871273806432236154131296627848274500942, 102612949484613044425282162678712161683628369600970203512390545575002032217615], [15193103946820418931911127884882411771893802700442444795804210145590291664412, 97144336754426046402268193208155456246833216663576167369107625031362622450833], [40261957274494516514510507367774869457863765503612429855457568258645294224883, 95139970500591010011263820500155408332924226764272489553297701506603156186195]]]
+
+if(upu == 0):
+    print("hllo")
+    I = [b'\x91\x8e\xc1zmI\xf3\xe1\xeb\x96\x85\xea?\xd3w\x80\x86\xb8\xe2\xd9\x07\xfe\xe1\xa3\xb2\xfd\xfb\xd8\x0e\x91\x18\xfaxJ\x04\x079\xfc!\xa9\xa3\xd5\r#\xf6\xbf\x11\xbd\xc3\xe6\xdd\xc5:\x1b\xce+\xed\xa18\x9c\xec\xdf\x8a\xaf', b'Zj\n!U\xcd\x9b:\x82\xda\r\xd9+O\xe4AX\xcff\x8d%\xe6/4fd\xc547\\\xc8)\x02\xb9|\xb8\x81t\x1c\xc3;\xcbF\xb9\xda\xa6\x19\x8e\xcbo/\xf3`\xc8\xe8\xccBPv~\xc9\xc6at', b'Jj\x8f\xc2\xb3\x8c\x13+\x1b\x15\xfeu\x0f\xbcj\x90&|\x12\x82\x08f\xc6&\xe7\xb2\x98B`\xa7\xd4z,\x91\xf2KqG\x02\xbf\xf6\x02\xab\xadE\xc9\xb7zq\xc7\xac\xeeD\xae-\xdd\x17A\x15\x8aj\xba\x1d\xe7']
+    c = b'\x8cF\x9e\x18\xe6\xc1\xc3\x10q,\x87Xy~\x11\t\xc0?\x9c\x95\xba\th\xa3\n\xb1E\xfd-xU\xee'
+    ss = [[b'\xfe{H\xaa\x1aSA$\x96F\x8b\xc6\xf2\xe5x\x98\xfbO!\xca\xa3\xb5v\x0e\x9d\xc1 \xce\xb4Y&+', b'\t\xee\xc3>!\xeaNO*Fh\xa9\xa3|\x88\x91r\tBV+\x80\x1a\x82\xae\xbdJ\xbb\xca7\x9f\x03', b"\xecZQ\x94'\xe2\r.\xe4\x84\xf5\xb7)\x8b\x87\x02\xd4(\xcd\x13\x84\x0e,%\x06(\x92\xeb\x0e\x84\xe3\xf3"], [b'\x02\x95\xe3\x811\xe8\xfbwre\x9a\xed\xe6\xf9\xc6\xd9\xf1*\x9dfsW\x84gH\r\xa4c\xdf\xdcm\xcf', b'\xaa\xc6\xb2\x81\x86\x00>\x08\x8c\xcd\xdd\xf4\x07]4\x06G\xefx\xf3RyA\xce\x8f\xe1k=t\x95V\xb5', b'\xcbN]\xbc\xc9aO\x1a\xaa\xdcpJ\x1a\xf1\x18h\xc7\x92L\xd6\xc7\xb0N\xc4A\xb3l%%\x96\xc8w']]
+    matrix = [[b'\x83\x8e\xea\xa8.\x8a\xcd\x95-\x82g\x95\xb4\xfdGQ\x13|Z\xbaHe\xb8>v\x03\ruK6xp\xad\xb9T\xb5\x8f$\xc8m\x16\\\x926\xd8\x81\x967?"\xc6\x95\xd1\xf94\xd6\xdd\xd6\xde\xb9QV_\xd2', b'\xa5\x84KFO\xd8V\x94\x92g:\xae!L\x07\xd8?\xf7\x0b\xe5\xed\xd0\x99\xe4\x9a\xa9\x94\x1e\xc4e\xe2t\x16r\xb1\xb4g\x0f\xbb\x13\x12\x0e\x99\xb6,\xadch\xfc\xe7o\x83 \x9d\x92\xbd\xfb\xa4m\xa9Ll\xce\x97', b'"~\\2\xbea|B/\xbc\xf7|\x99(\xfc\x90\xbe\xc1\x15\xd4\xe1\xc5\x7f\xc0E\x91\xae\xbe<4\xf4\xd0\nc\xff\x11{\xbfo\x81\xb1\x15F\xe0"\x19\'\xd3\x16{M\xb7\x1f\x01a\xb9VKZ\xdc\xc8\x00(\xfd'], [b'\xc3l\x1d\xd8\xa6"\xe2i.m\xaf\xd6\xb2\x1d?l\xca\x95\xe8\\:%\xd6\x1c\xfb\xb4\xb1\x8e\xc6\xb8i/\xcc&7\x06\x81\xf6e[\xb23\x93\xc1\x98\xec\x94\x1e.Ac\xb4\x13\xf2\xeftR\x0b\xd6\x021\xeb\xcb\xe4', b'\xd6z\xb3\x82\xe9J\xe9?:\xdcV\xcc\x0c\x82\xcb\xb8?\xbb\xfe\xf1S\xea\xe8?\xc5\x8d\x0e\xabgR\xb6\xa0\xb7S\x0c\xb3\x948\xb9\xe8\xef28\xdb\x07\x19\xee]>-\xaa\xea~\xc6\x84o\xa3\xb6\xf4\xb8 \x1c\x99\r', b'\x0f5LV\xab\xde\xf7\x9d-6\x19\xee\r\xfc\x91\xb8`]\xed\xb5\x13ftGI\x1e,-\xd4\x9e\xfd\xb1~B\xce\xee8X&\x83\xf4\x1f\xda\xa2\x0eu\x84\xec\xf1\x8e\x91b\xef\xd8@r\xd1\xb3u\x10D\x06\xbb\xad']]
+    L = [[[75148441718093911093699265596595011891035690438045931474643057574137556167782, 84739144058733636519595151843306303651724619932316631317069372562615704548185], [36784820971120095994093557556704311148949345709377824388430505346592798585990, 16057742365979431381680357975770848778509610240762932265368682853282876069380], [94589466106114668891674682916584156112676760297700771796726523219520978530154, 57919896335080707081889889715128561100111063335759352388463264443091984563300]], [[99888744237355008543512857094857782212046167400882338507486491626237913195974, 60229276645013004795125227975056596894463495518335341750787980014400072638751], [78228094889104920350064451434167789844961074751446542911988684949760512615878, 89632181898210072562012896239884533880883773534592981556418433744667610213818], [13951688536512514926099771154175299040518332704493617534109449052874923310986, 3180525789243581493554610254111259482911904409848420939789486024828398114180]]]
+    R = [[[80860683051483147187576854420906898390755022413253239943771056679123387775482, 23369161977150621357533360624103072826345397485256687996933763508054302582133], [101516620052698031207786929998565293167425704692177857430440012409146294700097, 59837914238284665309268481214172114692620528544936088448500386075512547468779], [62419719125379616810065053108781791752070492998926665605081560458471260653588, 75083362584239115944036822117242030411549246494018300357189133647871991406078]], [[98850925056643976589342831133144315891871273806432236154131296627848274500942, 102612949484613044425282162678712161683628369600970203512390545575002032217615], [15193103946820418931911127884882411771893802700442444795804210145590291664412, 97144336754426046402268193208155456246833216663576167369107625031362622450833], [40261957274494516514510507367774869457863765503612429855457568258645294224883, 95139970500591010011263820500155408332924226764272489553297701506603156186195]]]
 send_ring("", matrix, c, ss, I)
 
 
