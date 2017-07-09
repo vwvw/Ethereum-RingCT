@@ -129,8 +129,8 @@ contract RingCT {
         if(mg.ssY != mg.IIX) {
             LogErrorString("Mismatch in the dimension of the II matrix and the ss matrix in the signature");
         }
-        uint256 m = mg.ssX;
-        uint256 n = mg.ssY;
+        uint256 n = mg.ssX;
+        uint256 m = mg.ssY;
         uint256[] memory c = new uint256[](n);
         c[n - 1] = mg.cc;
         // PrintUint(mg.cc);
@@ -152,19 +152,19 @@ contract RingCT {
         uint256[2][] memory R = new uint256[2][](restOfStuff[0]);
         for(uint256 j = 0; j < restOfStuff[0]; j++) {
             L[j] = JtoA(ecadd(L1(j, restOfStuff, mg), L2(j, restOfStuff, km)));
-            PrintUint(L[j][0]);
-            PrintUint(L[j][1]);
-            PrintUint(uint256(1111111111111111));
+            // PrintUint(L[j][0]);
+            // PrintUint(L[j][1]);
+            // PrintUint(uint256(1111111111111111));
             R[j] = JtoA(ecadd(R1(j, restOfStuff, km, mg), R2(j, restOfStuff, mg)));
-            PrintUint(R[j][0]);
-            PrintUint(R[j][1]);
-            PrintUint(uint256(2222222222222222));
+            // PrintUint(R[j][0]);
+            // PrintUint(R[j][1]);
+            // PrintUint(uint256(2222222222222222));
         }
         // return uint256(sha3(messageString));
         c =  uint256(sha3(messageString, L, R));
-        PrintUint(8888888);
-        PrintUint(c);
-        PrintUint(8888888);
+        // PrintUint(8888888);
+        // PrintUint(c);
+        // PrintUint(8888888);
         return c;
     }
 
@@ -172,19 +172,19 @@ contract RingCT {
         GA = [Gx, Gy];
         G = pubKey(GA);
         res = ecmul(mg.ss[restOfStuff[1] * restOfStuff[0] + j], G.key);
-        PrintUint(3333333);
-        PrintUint(JtoA(res)[0]);
-        PrintUint(JtoA(res)[1]);
-        PrintUint(3333333);
+        // PrintUint(3333333);
+        // PrintUint(JtoA(res)[0]);
+        // PrintUint(JtoA(res)[1]);
+        // PrintUint(3333333);
         return res;
     }
 
     function L2 (uint256 j, uint256[3] restOfStuff, pubKey[100] km) internal returns (uint256[3] res) {
         res =  ecmul(restOfStuff[2], km[restOfStuff[1] * restOfStuff[0] + j].key);
-        PrintUint(4444444);
-        PrintUint(JtoA(res)[0]);
-        PrintUint(JtoA(res)[1]);
-        PrintUint(4444444);
+        // PrintUint(4444444);
+        // PrintUint(JtoA(res)[0]);
+        // PrintUint(JtoA(res)[1]);
+        // PrintUint(4444444);
         return res;
     }
 
@@ -195,19 +195,19 @@ contract RingCT {
         G = pubKey(GA);
         uint256[2] memory C = JtoA(ecmul(B, G.key));
         res = ecmul(A, C);
-        PrintUint(5555555);
-        PrintUint(JtoA(res)[0]);
-        PrintUint(JtoA(res)[1]);
-        PrintUint(5555555);
+        // PrintUint(5555555);
+        // PrintUint(JtoA(res)[0]);
+        // PrintUint(JtoA(res)[1]);
+        // PrintUint(5555555);
         return res;
     }
 
     function R2 (uint256 j, uint256[3] restOfStuff, mgSig mg) internal returns (uint256[3] res) {
         res = ecmul(restOfStuff[2], mg.II[j].key);
-        PrintUint(6666666);
-        PrintUint(JtoA(res)[0]);
-        PrintUint(JtoA(res)[1]);
-        PrintUint(6666666);
+        // PrintUint(6666666);
+        // PrintUint(JtoA(res)[0]);
+        // PrintUint(JtoA(res)[1]);
+        // PrintUint(6666666);
         return res;
     }
     // function verifyRing (Ring r) returns (bool) {
