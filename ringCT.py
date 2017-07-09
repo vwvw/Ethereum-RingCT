@@ -15,7 +15,7 @@ from ethjsonrpc import EthJsonRpc
 from ethjsonrpc.constants import BLOCK_TAGS, BLOCK_TAG_EARLIEST, BLOCK_TAG_LATEST
 
 debug = True
-rangSigBool = False
+rangSigBool = True
 MAX_AMOUNT = 2**64;
 MAX_MIXIN = 100; 
 crv=ecdsa.SECP256k1
@@ -493,35 +493,38 @@ def getKeyFromBlockchain():
     return g.from_string(x).verifying_key.to_string()
 
 def GenSchnorrNonLinkable(x, P1, P2, index):
-    # x: bytes32
-    # P1: bytes32
-    # P2: bytes32
+    # x: bytes32 number
+    # P1: pubkey in to string format bytes32
+    # P2: pubkey in to string format bytes32
 
     if index == 0:
         a = to_32_bytes_number(random.randrange(crv.order))
-        L1 = g.from_string(a).verifying_key.to_string()
+        L1Point = g.from_string(a).verifying_key.pubkey.point
         s2 = to_32_bytes_number(random.randrange(crv.order))
-        c2 = hashlib.sha256(L1).digest()
-        L2 = VerifyingKey.from_public_point(g.from_string(s2).verifying_key.pubkey.point + (VerifyingKey.from_string(P2).pubkey.point * to_int_from_bytes(c2))).to_string()
-        c1 = hashlib.sha256(L2).digest()
+        c2 = hashlib.sha256(to_32_bytes_number(L1Point.x()) + to_32_bytes_number(L1Point.y())).digest()
+        L2Point = g.from_string(s2).verifying_key.pubkey.point + (VerifyingKey.from_string(P2).pubkey.point * to_int_from_bytes(c2))
+        c1 = hashlib.sha256(to_32_bytes_number(L2Point.x()) + to_32_bytes_number(L2Point.y())).digest()
         s1 = to_32_bytes_number((to_int_from_bytes(a) -  to_int_from_bytes(x) * to_int_from_bytes(c1)) % crv.order)
 
         # sanity check
         if(debug):
-            L1p = VerifyingKey.from_public_point(g.from_string(s1).verifying_key.pubkey.point + (VerifyingKey.from_string(P1).pubkey.point * to_int_from_bytes(c1))).to_string()
-            assert L1p == L1, "Sanity check failed in GenSchnorr 1\nAborting..."
+            L1p = g.from_string(s1).verifying_key.pubkey.point + (VerifyingKey.from_string(P1).pubkey.point * to_int_from_bytes(c1))
+            assert VerifyingKey.from_public_point(L1p).to_string() == VerifyingKey.from_public_point(L1Point).to_string(), \
+                "Sanity check failed in GenSchnorr 1\nAborting..."
     if index == 1:
         a = to_32_bytes_number(random.randrange(crv.order))
-        L2 = g.from_string(a).verifying_key.to_string()
+        L2Point = g.from_string(a).verifying_key.pubkey.point
         s1 = to_32_bytes_number(random.randrange(crv.order))
-        c1 = hashlib.sha256(L2).digest()
-        L1 = VerifyingKey.from_public_point(g.from_string(s1).verifying_key.pubkey.point + (VerifyingKey.from_string(P1).pubkey.point * to_int_from_bytes(c1))).to_string()
-        c2 = hashlib.sha256(L1).digest()
+        c1 = hashlib.sha256(to_32_bytes_number(L2Point.x()) + to_32_bytes_number(L2Point.y())).digest()
+        L1Point = g.from_string(s1).verifying_key.pubkey.point + (VerifyingKey.from_string(P1).pubkey.point * to_int_from_bytes(c1))
+        c2 = hashlib.sha256(to_32_bytes_number(L1Point.x()) + to_32_bytes_number(L1Point.y())).digest()
         s2 = to_32_bytes_number((to_int_from_bytes(a) - (to_int_from_bytes(x) * to_int_from_bytes(c2))) % crv.order)
         # sanity check
         if(debug):
-            L2p = VerifyingKey.from_public_point(g.from_string(s2).verifying_key.pubkey.point + (VerifyingKey.from_string(P2).pubkey.point * to_int_from_bytes(c2))).to_string()
-            assert L2p == L2, "Sanity check failed in GenSchnorr 2\nAborting..."
+            L2p = g.from_string(s2).verifying_key.pubkey.point + (VerifyingKey.from_string(P2).pubkey.point * to_int_from_bytes(c2))
+            assert VerifyingKey.from_public_point(L2p).to_string() == VerifyingKey.from_public_point(L2Point).to_string(), \
+                "Sanity check failed in GenSchnorr 2\nAborting..."
+    L1 = VerifyingKey.from_public_point(L1Point).to_string()
     return L1, s1, s2
 
 def VerSchnorrNonLinkable(P1, P2, L1, s1, s2):
@@ -530,9 +533,11 @@ def VerSchnorrNonLinkable(P1, P2, L1, s1, s2):
     # L1: output of GenSchnorr, pubkey in from_string format (32 bytes)
     # s1: output of GenSchnorr, number (32 bytes)
     # s2: output of GenSchnorr, number (32 bytes)
-    c2 = hashlib.sha256(L1).digest()
-    L2 = VerifyingKey.from_public_point(g.from_string(s2).verifying_key.pubkey.point + (VerifyingKey.from_string(P2).pubkey.point * to_int_from_bytes(c2))).to_string()
-    c1 = hashlib.sha256(L2).digest()
+    L1Point = VerifyingKey.from_string(L1).pubkey.point
+    c2 = hashlib.sha256(to_32_bytes_number(L1Point.x()) + to_32_bytes_number(L1Point.y())).digest()
+    L2PointA = g.from_string(s2).verifying_key.pubkey.point
+    L2Point = g.from_string(s2).verifying_key.pubkey.point + (VerifyingKey.from_string(P2).pubkey.point * to_int_from_bytes(c2))
+    c1 = hashlib.sha256(to_32_bytes_number(L2Point.x()) + to_32_bytes_number(L2Point.y())).digest()
     L1p = VerifyingKey.from_public_point(g.from_string(s1).verifying_key.pubkey.point + (VerifyingKey.from_string(P1).pubkey.point * to_int_from_bytes(c1))).to_string()
     assert L1 == L1p, "GenSchnorrNonLinkable failed to generate a valid signature.\nAborting..."
 
@@ -746,14 +751,66 @@ pub5 = "04da11a42320ae495014dd9c1c51d43d6c55ca51b7fe9ae3e1258e927e97f48be4e7a447
 # print("R = ", end='')
 # print(R)
 
-if(upu == 0):
-    I = [b'q\xc0\x8bc2\x80\x80\xfb\xb7r2 \xf46\x0f\xbb\xed\x0e\xd6,\xe3\xd9S\x8e\xe7\xed@\xcc\x81\x0c8\x1c\xfd\xf2va3TR\x90m\x9c\n\n\xd8\x12\xd9,\xbc\xf5\x11\xef7ipg\xe8N0Y\x8ee\xdf%', b"\x8a\x85\xacWF_RG'2\x9bz\xf5\x15w\x01R\xf0Q(u\xbf\x18d\xc6\x04\x90\x91\n\xdf\x9c\x0b\x91\x02\x07\xc1\xfc\xb6\xc0D^S\x1b\xf0Q\xa3\x19Li\x9a\xed\x10\\\xdd\x9d\xac\xabqj\x13-4C\xfb", b'\x99y\xc9m\xefX\x1d\xebK\x1f\x0e`\x11d\xaaN\x9d*u\x87\x05}\x02\xc8\xcc@\x96\xfc\xbd\xa9v5l^\xb6(\x1a\x9f\xf7\xde\x84\x98\xfdyp\x0c\x9a\xb6\xdb1\xc6\x0c\x03@,\x0e\xb9k\xdaS\xc7\xb6\xff\xa9']
-    c = b"'\xf5V\xc5\xf2\x82)\x0f\x05\x9eA\xa2\x0f\xb9\x81\xe0\\\x12\xd4{\x15E\x8e\xfc\x12\xcb\x8ee)\x08\xabM"
-    ss = [[b'\xf4\xb1\xb9\x01\xe5\xe2lM\x0f\x8d\xf0\xbf\x7f\xdfy\xa8\xb0_\x0b\xe0\x0f\xf94\x16E\xf2V\xf2\xce\xd4[_', b'\xeag\xd84\xa3mg\xae\n\xdb2\xbc\xd3\xd8\xe4\xe9~W\x98\x1b\xe5\xa7\x96\x17\x0c\xb9\x1d\xc3\x85\xa7\x85\xb3', b',!\xdf\xf6\xa5\x92\x0e\x92\xeb]b{\xc4E\x80tA\xea\x0b\xd4\xfb9Y\xa1\x91{}\x01\x01\xd2\\\xe8'], [b'\x96:\xaa\xa1\xfd\xbaGb?\xa1@n^n~\xaadk\xd0L\xb0^GG\\\x01\x89\xfaq\xc8<u', b'\xf4\x0c\xd3\x1b,\xdf\n\x8cb}\xe5\x1cE\xe4\x00\xc4\xbc\xd1s\xc6\x89\x080%\x15x8`\xc6\x1an,', b'E\xbax\xba\xf9\x94\xff\r\xe3v\xa2i\x93\x05n\xdbv2\x9bd\x1a6\xcc\xaf\xc4\x1e\x8f,\xca\x07\x01\x1e']]
-    matrix = [[b'\x91%\xe8\xaf\xb0i\xfbh\xee9\x89&\x82\xa2\x0f\x15*\x92\x07\x9e\xf1\xc3\x84\xa5\xaa\xb6\xff_\x0c?a<j.?\x10x:F\xd8E\xd9\xad\x08t\x07\x8e|\x19\xf3\x87\xa7\x89\xe9\xaf~_\x00_b%;\x93\xd3', b"R\xa0\xc9_Z\x13\xbe\xb5\xe3r\xe4\xb7\na&\x9aQ\x8e>;A\x8b\xf3jg{\xf9Gg('\xdcf?\xbeY\x8e\xd7)\xd2W\xc4\x1bZI3-7\x9d\x1a\x19\xc6$>\xc8\xb5\xc0\x03F\x95\xef`y:", b'\x1a\x0f=\xc1\xa2\x90\xdb\n\xec\x1fVg5\xaf\xcf\xd9\xadTr\xdd\x03Z\x88-h\x12D\x06\xd6L\xfd@\x97\x15\xf3\x84uB\xd8\x18\xd1\xde\x18Z\x03\x9c\xf8+\xc2\x95\xb8OQc\x03>\xf0\xd6\xca/\x95\xd1b\xc0'], [b'\xd0\xa3\x91f\x80\xb6\x1dq\x1e\xefm\xbf\x08\x9f\xd6\xf0\xae\x86\xb7\xd8\xcc\xcd\xb4\x19\xd2\x82\xa4B\x9d\x8e\xe5\xd9\xe96H\x8b\r\x1d\xbeG\x14L0\xe4\x96\xf5\xef\xa1\xea\x89\xb5\xc3\x17\x84\xf7\xa9\x9fL\xe9\xfd?\xcc\xa4\x8d', b"~\xc0\x1d\xcdS+_\r\xec\xb6Ew\xac\n\xae;kyf\xcd\x00r\x11Mv \xc1`\xf5\x05f\x84\xb5\xf2)\xd8\x89~\xe7\x89\x8a\rIb\x15\x14#\x886e>\x03\x9d\xc6Y'\xaf\xb9\x96\x15\xcc\xaa\xeda", b'\x84\x90\x1f\xf9\x83\xdf\xdd\xc6\x91VE\x99\xe4[w\xe4\x04\x03,g@\xbb>F\xfb}\xf8\x9d\xff5&\xb3\x10.B\xb0\xe2\xde\x85\xbf\xe6R\xcb5\x99-\\\xe14\x92]l\x10\xf8\xe8\xfaB\xcf0\x84\x11\xe8\xf8N']]
-    L = [[[67568219278872063116858731286494094426526800021979047794231976327118747170869, 4124190802190768737775677903319986613278382390222016340637316022983215513951], [46641593214569842105539997646855453721704848548863602426668361867957162535410, 83491591937706361677055271494614659440509889704610681787481198916046399631745], [14173759417892718798002834245712052388429749841269886368695202810622651152182, 31373863148647571773452438583396577846309280139036828349113307581326624191833]], [[78801145352555159339513583962704496235407556387744775751375136652795140956258, 101092838777187931716179914931287066081957677419110531383717730505680516974757], [111448400435557596065604471457935035895276183210779941806004156927440360105758, 21255117225304034008510093823957577381882000064380536491866085372943723083579], [59361044430883609720657060515938544433618933260609749420965371432909223799009, 41554280199625242679513783979921334403875139778410686312899620239877156442268]]]
-    R = [[[88166592521677660875561116612873821404620222753600492098689398187623435611129, 34949305312588355594419135378409933446493941130282977849679070377922577585333], [79378051287249561629292263540481953767796307454786187664433011406507282425540, 49821777734207903760215127861024368170082158648811869920196480226167766133973], [38148449668158749289165377848720927370910678745245024081894245399513925718061, 74342531632521422242417623596467069192469074355442350577403624877306094188903]], [[5905088600175110656211302465017808401270270836803172573975504241952061909806, 57276724663561780559826149283786925648514763815542425453754812051511526033383], [30394712966506654142445613665813849351445412212753691625890997522176565299714, 66992915390068631033660621189564147531739819295224793360169282471566346754438], [101827451213677863453391062100079656748656651418103194190418965897085850185119, 14909169240030856436378977082027046791714731199379557039640355049357007351253]]]
-send_ring("", matrix, c, ss, I)
+# if(upu == 0):
+#     I = [b'q\xc0\x8bc2\x80\x80\xfb\xb7r2 \xf46\x0f\xbb\xed\x0e\xd6,\xe3\xd9S\x8e\xe7\xed@\xcc\x81\x0c8\x1c\xfd\xf2va3TR\x90m\x9c\n\n\xd8\x12\xd9,\xbc\xf5\x11\xef7ipg\xe8N0Y\x8ee\xdf%', b"\x8a\x85\xacWF_RG'2\x9bz\xf5\x15w\x01R\xf0Q(u\xbf\x18d\xc6\x04\x90\x91\n\xdf\x9c\x0b\x91\x02\x07\xc1\xfc\xb6\xc0D^S\x1b\xf0Q\xa3\x19Li\x9a\xed\x10\\\xdd\x9d\xac\xabqj\x13-4C\xfb", b'\x99y\xc9m\xefX\x1d\xebK\x1f\x0e`\x11d\xaaN\x9d*u\x87\x05}\x02\xc8\xcc@\x96\xfc\xbd\xa9v5l^\xb6(\x1a\x9f\xf7\xde\x84\x98\xfdyp\x0c\x9a\xb6\xdb1\xc6\x0c\x03@,\x0e\xb9k\xdaS\xc7\xb6\xff\xa9']
+#     c = b"'\xf5V\xc5\xf2\x82)\x0f\x05\x9eA\xa2\x0f\xb9\x81\xe0\\\x12\xd4{\x15E\x8e\xfc\x12\xcb\x8ee)\x08\xabM"
+#     ss = [[b'\xf4\xb1\xb9\x01\xe5\xe2lM\x0f\x8d\xf0\xbf\x7f\xdfy\xa8\xb0_\x0b\xe0\x0f\xf94\x16E\xf2V\xf2\xce\xd4[_', b'\xeag\xd84\xa3mg\xae\n\xdb2\xbc\xd3\xd8\xe4\xe9~W\x98\x1b\xe5\xa7\x96\x17\x0c\xb9\x1d\xc3\x85\xa7\x85\xb3', b',!\xdf\xf6\xa5\x92\x0e\x92\xeb]b{\xc4E\x80tA\xea\x0b\xd4\xfb9Y\xa1\x91{}\x01\x01\xd2\\\xe8'], [b'\x96:\xaa\xa1\xfd\xbaGb?\xa1@n^n~\xaadk\xd0L\xb0^GG\\\x01\x89\xfaq\xc8<u', b'\xf4\x0c\xd3\x1b,\xdf\n\x8cb}\xe5\x1cE\xe4\x00\xc4\xbc\xd1s\xc6\x89\x080%\x15x8`\xc6\x1an,', b'E\xbax\xba\xf9\x94\xff\r\xe3v\xa2i\x93\x05n\xdbv2\x9bd\x1a6\xcc\xaf\xc4\x1e\x8f,\xca\x07\x01\x1e']]
+#     matrix = [[b'\x91%\xe8\xaf\xb0i\xfbh\xee9\x89&\x82\xa2\x0f\x15*\x92\x07\x9e\xf1\xc3\x84\xa5\xaa\xb6\xff_\x0c?a<j.?\x10x:F\xd8E\xd9\xad\x08t\x07\x8e|\x19\xf3\x87\xa7\x89\xe9\xaf~_\x00_b%;\x93\xd3', b"R\xa0\xc9_Z\x13\xbe\xb5\xe3r\xe4\xb7\na&\x9aQ\x8e>;A\x8b\xf3jg{\xf9Gg('\xdcf?\xbeY\x8e\xd7)\xd2W\xc4\x1bZI3-7\x9d\x1a\x19\xc6$>\xc8\xb5\xc0\x03F\x95\xef`y:", b'\x1a\x0f=\xc1\xa2\x90\xdb\n\xec\x1fVg5\xaf\xcf\xd9\xadTr\xdd\x03Z\x88-h\x12D\x06\xd6L\xfd@\x97\x15\xf3\x84uB\xd8\x18\xd1\xde\x18Z\x03\x9c\xf8+\xc2\x95\xb8OQc\x03>\xf0\xd6\xca/\x95\xd1b\xc0'], [b'\xd0\xa3\x91f\x80\xb6\x1dq\x1e\xefm\xbf\x08\x9f\xd6\xf0\xae\x86\xb7\xd8\xcc\xcd\xb4\x19\xd2\x82\xa4B\x9d\x8e\xe5\xd9\xe96H\x8b\r\x1d\xbeG\x14L0\xe4\x96\xf5\xef\xa1\xea\x89\xb5\xc3\x17\x84\xf7\xa9\x9fL\xe9\xfd?\xcc\xa4\x8d', b"~\xc0\x1d\xcdS+_\r\xec\xb6Ew\xac\n\xae;kyf\xcd\x00r\x11Mv \xc1`\xf5\x05f\x84\xb5\xf2)\xd8\x89~\xe7\x89\x8a\rIb\x15\x14#\x886e>\x03\x9d\xc6Y'\xaf\xb9\x96\x15\xcc\xaa\xeda", b'\x84\x90\x1f\xf9\x83\xdf\xdd\xc6\x91VE\x99\xe4[w\xe4\x04\x03,g@\xbb>F\xfb}\xf8\x9d\xff5&\xb3\x10.B\xb0\xe2\xde\x85\xbf\xe6R\xcb5\x99-\\\xe14\x92]l\x10\xf8\xe8\xfaB\xcf0\x84\x11\xe8\xf8N']]
+#     L = [[[67568219278872063116858731286494094426526800021979047794231976327118747170869, 4124190802190768737775677903319986613278382390222016340637316022983215513951], [46641593214569842105539997646855453721704848548863602426668361867957162535410, 83491591937706361677055271494614659440509889704610681787481198916046399631745], [14173759417892718798002834245712052388429749841269886368695202810622651152182, 31373863148647571773452438583396577846309280139036828349113307581326624191833]], [[78801145352555159339513583962704496235407556387744775751375136652795140956258, 101092838777187931716179914931287066081957677419110531383717730505680516974757], [111448400435557596065604471457935035895276183210779941806004156927440360105758, 21255117225304034008510093823957577381882000064380536491866085372943723083579], [59361044430883609720657060515938544433618933260609749420965371432909223799009, 41554280199625242679513783979921334403875139778410686312899620239877156442268]]]
+#     R = [[[88166592521677660875561116612873821404620222753600492098689398187623435611129, 34949305312588355594419135378409933446493941130282977849679070377922577585333], [79378051287249561629292263540481953767796307454786187664433011406507282425540, 49821777734207903760215127861024368170082158648811869920196480226167766133973], [38148449668158749289165377848720927370910678745245024081894245399513925718061, 74342531632521422242417623596467069192469074355442350577403624877306094188903]], [[5905088600175110656211302465017808401270270836803172573975504241952061909806, 57276724663561780559826149283786925648514763815542425453754812051511526033383], [30394712966506654142445613665813849351445412212753691625890997522176565299714, 66992915390068631033660621189564147531739819295224793360169282471566346754438], [101827451213677863453391062100079656748656651418103194190418965897085850185119, 14909169240030856436378977082027046791714731199379557039640355049357007351253]]]
+# send_ring("", matrix, c, ss, I)
 
+P1 = b"\xaddEd'\x9f\xef\xe1?&J\xc3\xb3CpT\x99\xeey\xd6\xfc\xf5\xb9\xcd\x0f,/\x06g\xe4\xa9\x83\xde\xca?X/\xab\x17\x16\xaco0S\xbe\xad<Hu\x00f8\x19\xcd\x00\xfd\x82O;Ic\xe0\x1e\x90"
+P2 = b"\xd2n\x1c4n\x14\xc6\xd2i\x9c\xa1\x08\xf0\x04'G\xfd\x9b$\xc5\xf5\xf6\xf4\xe9\x94D\x99*o\x89P\x98\xc4\xd3Y\xd6E\xc8\x04\x9f\xc3\xde\x1d\x81\x82\xcd\x8f\x03)\x14\x1f\r\x08d\xfco\x83si7g;\xe1\xb4"
+L1 = b"i\x90N\xc5\x1aYO*.F\xb71\x92V\xffCvT\x98\xb6C\xfaa#g\x14[\x13[\xab\x83\x99\xe6\x91{ \xee\xc8\\\xb4\xfd\x84}\xedG\x02\x126\xa0\x10\xb6\x11'|\xdf\xe3\xec\xbcw\xc26\xa3\x99\xee"
+s1 = b'b\xdf0\xbe,\x1d\xdaj\x19Q\xa2\xdf\xee\xf6\x95\x0e\x80\xdc\xa2\xf8o\xe3$\xb89\x96j\xaf\xfa>\xce\xe6'
+s2 = b'\x99ti\x8eO\xf1\xd6V\xcb\x1b6\xfe\x81\x97\r\xd9\xa3\x0ea\xc5t\x1d\x1ca[k\x8fD\x1a\x7f\x97;'
+VerSchnorrNonLinkable(P1, P2, L1, s1, s2)
+def sendSchnorr(P1, P2, L1, s1, s2):
+    print("------ Preparing to send transaction  -------")
+    filterNames = ['Log Error', 'Print string', 'Print bool', 'Print address', 'Print uint256', 'PrintStringAndUint(string,uint256)']
+    to_keccack = ["LogErrorString(string)", "PrintString(string)", "PrintBool(bool)", "PrintAddress(address)", "PrintUint(uint256)", "PrintStringAndUint(string,uint256)"]
+    keccack = []
+    for i in range(0, len(to_keccack)):
+        keccack.append(connection.web3_sha3(to_keccack[i]))
+
+    filter = []
+    for i in range(0, len(keccack)):
+        filter.append(connection.eth_newFilter(from_block='earliest', address=contractAddress, topics=[keccack[i]]))
+
+    cb = connection.eth_coinbase()
+    P1P = VerifyingKey.from_string(P1).pubkey.point
+    P1A = [P1P.x(), P1P.y()]
+    P2P = VerifyingKey.from_string(P2).pubkey.point
+    P2A = [P2P.x(), P2P.y()]
+    L1P = VerifyingKey.from_string(L1).pubkey.point
+    L1A = [L1P.x(), L1P.y()]
+    results = connection.call_with_transaction(cb, contractAddress, 
+        # 'y()',[])
+        'VerSchnorrNonLinkable(uint256[2],uint256[2],uint256[2],bytes32,bytes32)',\
+        [P1A, P2A, L1A, s1, s2], gas=99999999999, gas_price=1)
+    bashCommand = 'curl -X POST 127.0.0.1:8545 -m 3 --data ' + results.replace(" ", "")
+    import subprocess
+    process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
+    output, error = process.communicate()
+    print(output)
+    print("ERROR: ",error)
+    print("------Transaction sent, waiting events-------")
+    for i in range(0, 20):
+        time.sleep(1);
+        if i%10== 0:
+            print(i)
+
+    for i in range(0, len(filter)):
+        change = connection.eth_getFilterChanges(filter[i])
+        if len(change) > 0:
+            for j in range(0, len(change)):
+                if filterNames[i] == "Print uint256":
+                    print(filterNames[i] + " result " + str(j) + ":\n" + str(to_int_from_bytes(bytes.fromhex(change[j]["data"][2:]))))
+                else:
+                    print(filterNames[i] + " result " + str(j) + ":\n" + str(bytes.fromhex(change[j]["data"][2:])))
+
+    print("------ All events have been displayed -------")
+sendSchnorr(P1, P2, L1, s1, s2);
 
 # # test()

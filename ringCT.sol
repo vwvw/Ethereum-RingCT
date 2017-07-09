@@ -50,7 +50,7 @@ contract RingCT {
     uint constant Gx = 0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798;
     uint constant Gy = 0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8;
 
-    uint[2] GA = [Gx, Gy];
+    uint256[2] GA = [Gx, Gy];
     pubKey G = pubKey(GA);
     int256 ECADD = 5;
     int256 ECMUL = 6;
@@ -81,7 +81,7 @@ contract RingCT {
         PrintString(message);
 
         pubKey[100] memory II;
-        for(uint i = 0; i < IIX; i++) {
+        for(uint256 i = 0; i < IIX; i++) {
             II[i] = pubKeyConverter(IIB[i]);
         }
         mgSig memory mg = mgSig(ssX, ssY, convertSS(ssB), uint256(c0), IIX, II);
@@ -92,7 +92,7 @@ contract RingCT {
     function convertPK(bytes32[2][] pkB) internal returns (pubKey[100]) {
         // assert(pkB.length) < 100);
         pubKey[100] memory pk;
-        for(uint i = 0; i < pkB.length; i++) {
+        for(uint256 i = 0; i < pkB.length; i++) {
             pk[i] = pubKeyConverter(pkB[i]);
         }
         return pk;
@@ -101,8 +101,8 @@ contract RingCT {
     function convertSS(bytes32[] ssB) internal returns (uint256[100]) {
         // assert(ssB.length) < 100);
         uint256[100] memory ss;
-        for(uint i = 0; i < ssB.length; i++) {
-            ss[i] = uint(ssB[i]);
+        for(uint256 i = 0; i < ssB.length; i++) {
+            ss[i] = uint256(ssB[i]);
         }
         return ss;
     }
@@ -210,110 +210,6 @@ contract RingCT {
         // PrintUint(6666666);
         return res;
     }
-    // function verifyRing (Ring r) returns (bool) {
-    //     if(r.outPk.length != r.p.rangeSigs.length) {PrintString("Mismatched sizes of outPk and r.rangeSigs");};
-    //     if(r.outPk.length == r.ecdhInfo.length) {PrintString("Mismatched sizes of outPk and r.ecdhInfo")};
-    //     if(r.pseudoOuts.length == r.MGs.length) {PrintString("Mismatched sizes of r.pseudoOuts and r.MGs")};
-
-
-    //     uint threads;
-    //     if(r.outPk.length >r.mixRing.length {
-    //         threads = r.outPk.length;
-    //     } else {
-    //         threads = r.mixRing.length;
-    //     }
-
-    //     bool[threads] results;
-
-    //     bytes32 sumOutpks = 0x0100000000000000000000000000000000000000000000000000000000000000;
-    //     for (uint i = 0; i < r.outPk.length; i++) {
-    //         addKeys(sumOutpks, sumOutpks, rv.outPk[i].mask);
-    //     }
-    //     DP(sumOutpks);
-    //     key txnFeeKey = scalarmultH(d2h(rv.txnFee));
-    //     addKeys(sumOutpks, txnFeeKey, sumOutpks);
-
-    //     bytes32 sumPseudoOuts = 0x0100000000000000000000000000000000000000000000000000000000000000;
-    //     for (uint i = 0 ; i < rv.pseudoOuts.size() ; i++) {
-    //         addKeys(sumPseudoOuts, sumPseudoOuts, rv.pseudoOuts[i]);
-    //     }
-    //     DP(sumPseudoOuts);
-
-    //     //check pseudoOuts vs Outs..
-    //     if (!equalKeys(sumPseudoOuts, sumOutpks)) {
-    //         LOG_PRINT_L1("Sum check failed");
-    //         return false;
-    //     }
-
-    //     results.clear();
-    //     results.resize(rv.outPk.size());
-    //     tools::task_region(threadpool, [&] (tools::task_region_handle& region) {
-    //     for (size_t i = 0; i < rv.outPk.size(); i++) {
-    //         region.run([&, i] {
-    //             results[i] = verRange(rv.outPk[i].mask, rv.p.rangeSigs[i]);
-    //         });
-    //     }
-    //     });
-
-    //     for (size_t i = 0; i < results.size(); ++i) {
-    //         if (!results[i]) {
-    //             LOG_PRINT_L1("Range proof verified failed for output " << i);
-    //             return false;
-    //         }
-    //     }
-    // }
-
-
-    // function verifyRangeProofs (rangeSig rp, pubKey commitment) internal returns (bool result) {
-        // uint[3] Ctmp;
-        // Ctmp[0] = 0;
-        // Ctmp[1] = 0;
-        // Ctmp[2] = 0;
-
-        // for(uint i = 0; i < 64; i++) {
-        //     Ctmp = Secp256k1._addMixed(Ctmp, rp.Ci[i].key);
-        // }
-        // ECCMath.toZ1(Ctmp, pp); // to Jacobian 
-        // if(Ctmp[0] != commitment.key[0] || Ctmp[1] != commitment.key[1]) {
-        //     result = false;
-        //     return;
-        // } else {
-        //     result = verifyBoromean(rp);
-        //     return;
-        // }
-    // }
-
-    // function verifyBoromean (rangeSig rp) internal returns (bool result) {
-
-    // }
-
-
-    // function verify  (bytes32 keyImage, bytes pubKeys, string m, bytes32 keyMatrix, bytes32 rangeProofs) returns (bool){
-    //     for(uint256 i = 0; i < keyImagesUsed.length; i++) {
-    //         if(keyImagesUsed[i] == keyImage) {
-    //             return false;
-    //         }
-    //     }
-    //     if(!verifyRangeProofs(rangeProofs)) {
-    //         return false;
-    //     } 
-    //     if(!verifyRing(pubKeys, m, keyMatrix)) {
-    //         return false;
-    //     }
-    //     keyImagesUsed.push(keyImage);
-
-
-    //     /* inscribe the transaction in the block chain
-    //      */
-    // }
-
-
-
-
-
-
-
-
 
     uint256 constant a=0;
     uint256 constant b=7;
@@ -323,7 +219,41 @@ contract RingCT {
     uint256 constant gy=32670510020758816978083085130507043184471273380659243275938904335757337482424;
     
 
-      //Helper functions from ECMath.sol
+    function VerSchnorrNonLinkable(uint256[2] P1, uint256[2] P2, uint256[2] L1, bytes32 s1, bytes32 s2) {
+        uint256 c2 = uint256(sha256(L1));
+        uint256[3] memory x = ecmul(c2, P2);
+        uint256[2] memory L2 = JtoA(ecadd(ecmul(uint256(s2), [gx,gy]), x));
+        uint256 c1 = uint256(sha256(L2));
+        uint256[2] memory L1p = JtoA(ecadd(ecmul(uint256(s1), [gx,gy]), ecmul(c1, P1)));
+        PrintBool(L1p[0] == L1[0] && L1p[1] == L1[1]);
+        PrintUint(L2[0]);
+        PrintUint(L2[1]);
+        PrintUint(L1p[0]);
+        PrintUint(L1p[1]);
+        PrintUint(L1[0]);
+        PrintUint(L1[1]);
+    }
+
+    // function VerASNL(uint256 P1x, uint256[2][] P1, uint256[2][] P2, uint256[2][] L1, uint256[] s2, uint256 s) {
+    //     uint256[3] memory LHS = [0,0,0];
+    //     uint256[3] memory RHS = ecmul(s, [gx, gy]);
+    //     for(uint256 j = 0; j < P1x; j++) {
+    //         uint256 c2 = uint256(sha256(L1[j]));
+    //         uint256[3] memory L2 = ecadd(ecmul(s2[j], [gx, gy]), ecmul(c2, P2[j]));
+    //         if j == 0:
+    //             LHS = VerifyingKey.from_string(L1[j]).pubkey.point
+    //         else:
+    //             LHS = LHS + VerifyingKey.from_string(L1[j]).pubkey.point
+    //         c1 = hashlib.sha256(L2).digest()
+    //         RHS = RHS + (VerifyingKey.from_string(P1[j]).pubkey.point * to_int_from_bytes(c1))
+    //     }
+    //     assert VerifyingKey.from_public_point(LHS).to_string() == VerifyingKey.from_public_point(RHS).to_string(), \
+    //         "GenASNL failed to generate a valid signature.\nAborting..."
+
+    // }
+
+
+    //Helper functions from ECMath.sol
     // point addition for elliptic curve in jacobian coordinates
     // formula from https://en.wikibooks.org/wiki/Cryptography/Prime_Curve/Jacobian_Coordinates
     function ecadd(uint256[3] P, uint256[3] Q)  returns (uint256[3] R) {
