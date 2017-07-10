@@ -234,23 +234,48 @@ contract RingCT {
         PrintUint(L1[1]);
     }
 
-    // function VerASNL(uint256 P1x, uint256[2][] P1, uint256[2][] P2, uint256[2][] L1, uint256[] s2, uint256 s) {
-    //     uint256[3] memory LHS = [0,0,0];
-    //     uint256[3] memory RHS = ecmul(s, [gx, gy]);
-    //     for(uint256 j = 0; j < P1x; j++) {
-    //         uint256 c2 = uint256(sha256(L1[j]));
-    //         uint256[3] memory L2 = ecadd(ecmul(s2[j], [gx, gy]), ecmul(c2, P2[j]));
-    //         if j == 0:
-    //             LHS = VerifyingKey.from_string(L1[j]).pubkey.point
-    //         else:
-    //             LHS = LHS + VerifyingKey.from_string(L1[j]).pubkey.point
-    //         c1 = hashlib.sha256(L2).digest()
-    //         RHS = RHS + (VerifyingKey.from_string(P1[j]).pubkey.point * to_int_from_bytes(c1))
-    //     }
-    //     assert VerifyingKey.from_public_point(LHS).to_string() == VerifyingKey.from_public_point(RHS).to_string(), \
-    //         "GenASNL failed to generate a valid signature.\nAborting..."
+    function VerASNL(uint256 P1x, uint256[2][] P1, uint256[2][] P2, uint256[2][] L1, uint256[] s2, uint256 s) {
+        uint256[3] memory LHS = [uint256(0),0,0];
+        uint256[3] memory RHS = ecmul(s, [gx, gy]);
+        // PrintUint(JtoA(RHS)[0]);
+        for(uint256 j = 0; j < P1x; j++) {
+            uint256[6] memory LHRS = VerASNLHelper(j, L1[j], P1[j], P2[j], s2[j], LHS, RHS);
+            LHS[0] = LHRS[0];
+            LHS[1] = LHRS[1];
+            LHS[2] = LHRS[2];
+            RHS[0] = LHRS[3];
+            RHS[1] = LHRS[4];
+            RHS[2] = LHRS[5];
+        }
+        // PrintUint(JtoA(LHS)[0]);
+        // PrintUint(JtoA(RHS)[0]);
+        // PrintUint(JtoA(LHS)[1]);
+        // PrintUint(JtoA(RHS)[1]);
+        PrintBool(JtoA(RHS)[0] == JtoA(LHS)[0] && JtoA(RHS)[1] == JtoA(LHS)[1]);
+    }
 
-    // }
+    function VerASNLHelper(uint256 j, uint256[2] L1j, uint256[2] P1j, uint256[2] P2j, uint256 s2j, uint256[3] LHS, uint256[3] RHS) returns (uint256[6] LRHS) {
+        uint256 c2 = uint256(sha256(L1j));
+        // PrintUint(c2);
+        uint256[3] memory L2 = ecadd(ecmul(s2j, [gx, gy]), ecmul(c2, P2j));
+        // PrintUint(JtoA(L2)[0]);
+        uint256[3] memory LHS2 = [uint256(0), 0,0];
+        if(j == uint256(0)) {
+            LHS2 = ecmul(1, L1j);
+        }
+        else {
+            LHS2 = ecadd(LHS, ecmul(1, L1j));
+        }
+        uint256 c1 = uint256(sha256(JtoA(L2)));
+        // PrintUint(c1);
+        uint256[3] memory RHS2 = ecadd(RHS, ecmul(c1, P1j));
+        LRHS[0] = LHS2[0];
+        LRHS[1] = LHS2[1];
+        LRHS[2] = LHS2[2];
+        LRHS[3] = RHS2[0];
+        LRHS[4] = RHS2[1];
+        LRHS[5] = RHS2[2];
+    }
 
 
     //Helper functions from ECMath.sol
