@@ -28,7 +28,9 @@ contract RingCT {
     }
     
     struct rangeSig {
-        boroSig asig;
+        bytes32[64] s0;
+        bytes32[64] s1;
+        bytes32 ee;
         bytes32[64] Ci;
     }
 
@@ -47,9 +49,9 @@ contract RingCT {
     event PrintStringAndUint(string s, uint256 _value);
 
     // Base point (generator) G
-    uint constant Gx = 0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798;
-    uint constant Gy = 0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8;
-
+    uint256 constant Gx = 0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798;
+    uint256 constant Gy = 0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8;
+    uint256 ATOMS = 64;
     uint256[2] GA = [Gx, Gy];
     pubKey G = pubKey(GA);
     int256 ECADD = 5;
@@ -276,6 +278,26 @@ contract RingCT {
         LRHS[4] = RHS2[1];
         LRHS[5] = RHS2[2];
     }
+
+    function verRangeProofs(uint256[2][] Ci, uint256[2][] L1, uint256[] s2, uint256 s) {
+        uint256[3] memory HPow2 = ecmul(uint256(sha256(1)), [gx, gy]);
+        uint256[3][] memory H2 = new uint256[3][](ATOMS);
+        for(uint256 i = 0; i < ATOMS; i++) {
+            H2[i] = HPow2; 
+            uint256[3] memory tmp = ecdouble(HPow2);
+            HPow2 = tmp;
+        }
+        
+        uint256[2][] memory CiH = new uint256[2][](ATOMS);
+        for(i = 0; i < ATOMS; i++) {
+            uint256[3] memory negateH2 = ecmul(uint256(-1), JtoA(H2[i]));
+            CiH[i] = JtoA(ecadd(ecmul(1, Ci[i]), negateH2));
+        }
+        uint256 P1x = Ci.length;
+        VerASNL(P1x, Ci, CiH, L1, s2, s);
+}
+
+
 
 
     //Helper functions from ECMath.sol

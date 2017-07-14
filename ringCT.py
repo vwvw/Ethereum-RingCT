@@ -245,7 +245,7 @@ def createTransaction(message, inPk, inSk, inAmounts, destinations, outAmounts, 
 
 def verTransaction(message, newMatrix, destinations, destinationsCommitment, I, c_0, ss, infos, rangeSig):
     for rg in rangeSig:
-        verRangeProof(rg)
+        verRangeProofs(rg)
     verifyMG(message, newMatrix, I, c_0, ss)
 
 def prepareMG(message, pubsK, pubsC, inSk, inSkMask, outC, outSkMasks, index):
@@ -690,7 +690,7 @@ def proveRange(amount):
     return C_pk.to_string(), mask, rg
 
 
-def verRangeProof(rg):
+def verRangeProofs(rg):
     HPow2 = hash_to_point(to_32_bytes_number(1)).pubkey.point
     H2 = []
     for i in range(0, ATOMS):
