@@ -60,7 +60,7 @@ contract RingCT {
     
     bytes32[] keyImagesUsed;
 
-    function test() {
+    function test(uint256 i) {
         LogErrorString("-------------------");
         PrintString("We got a nice message:");
     
@@ -73,8 +73,37 @@ contract RingCT {
         // PrintUint(JtoA(ecmul(uint256(71449910333075107539383320123832160761226081732216163042225240336241879234277), G.key))[1]);
         
     }
+    // def verTransaction(message, newMatrix, I, c_0, ss, infos, rangeSig):
+    function verify(string message, string infos, uint256[2] pkDim, bytes32[2][] pkB, bytes32 c0, uint256[2] ssDim, bytes32[] ssB, uint256 IIX, bytes32[2][] IIB, uint256[2] Cdim, uint256[2][] CiArray, uint256[2][] L1Array, uint256[] s2Array, uint256[] sArray) {
+        // verifySignature(string message, pkDim[0], pkDim[1], pkB, c0, ssDim[0], ssDim[1], ssB, IIX, IIB);
+        verifyRangeProofs(Cdim[0], Cdim[1], CiArray, L1Array, s2Array, sArray);
+    }
 
-    function testb(string message, uint256 pkX, uint256 pkY, bytes32[2][] pkB, bytes32 c0, uint256 ssX, uint256 ssY, bytes32[] ssB, uint256 IIX, bytes32[2][] IIB) {
+    function verifyRangeProofs(uint256 Cx, uint256 Cy, uint256[2][] CiArray, uint256[2][] L1Array, uint256[] s2Array, uint256[] sArray) {
+        uint256 n = sArray.length; //number of range verRangeProofs
+        if(Cx != n) {
+           LogErrorString("Mismatch in the dimension of the Ci matrix and other matrixes");
+           return;
+        }
+        if(Cx * Cy != CiArray.length) {
+           LogErrorString("Mismatch in the dimension of the Ci matrix");
+           return;
+        }
+        for(uint256 i = 0; i < n; i++) {
+            uint256[2][] memory Ci = new uint256[2][](Cy);
+            uint256[2][] memory L1 = new uint256[2][](Cy);
+            uint256[] memory s2 = new uint256[](Cy);
+            for(uint256 j = 0; j < Cy; j++) {
+                Ci[j] = CiArray[i * Cy + j];
+                L1[j] = L1Array[i * Cy + j];
+                s2[j] = s2Array[i * Cy + j];
+            }
+            // function verRangeProofs(uint256[2][] Ci, uint256[2][] L1, uint256[] s2, uint256 s) {
+            // verRangveProofs(Ci, L1, s2, sArray[i]);
+        }
+    }
+
+    function verifySignature(string message, uint256 pkX, uint256 pkY, bytes32[2][] pkB, bytes32 c0, uint256 ssX, uint256 ssY, bytes32[] ssB, uint256 IIX, bytes32[2][] IIB) {
         
         if(pkX*pkY != pkB.length) {
            LogErrorString("Mismatch in the dimension of the key matrix");
