@@ -80,6 +80,7 @@ contract RingCT {
     }
 
     function verifyRangeProofs(uint256 Cx, uint256 Cy, uint256[2][] CiArray, uint256[2][] L1Array, uint256[] s2Array, uint256[] sArray) {
+        PrintUint(uint256(ATOMS));
         uint256 n = sArray.length; //number of range verRangeProofs
         if(Cx != n) {
            LogErrorString("Mismatch in the dimension of the Ci matrix and other matrixes");
@@ -89,6 +90,7 @@ contract RingCT {
            LogErrorString("Mismatch in the dimension of the Ci matrix");
            return;
         }
+        PrintUint(uint256(ATOMS));
         for(uint256 i = 0; i < n; i++) {
             uint256[2][] memory Ci = new uint256[2][](Cy);
             uint256[2][] memory L1 = new uint256[2][](Cy);
@@ -99,8 +101,9 @@ contract RingCT {
                 s2[j] = s2Array[i * Cy + j];
             }
             // function verRangeProofs(uint256[2][] Ci, uint256[2][] L1, uint256[] s2, uint256 s) {
-            // verRangveProofs(Ci, L1, s2, sArray[i]);
+            verRangeProofs(Ci, L1, s2, sArray[i]);
         }
+        PrintUint(uint256(ATOMS));
     }
 
     function verifySignature(string message, uint256 pkX, uint256 pkY, bytes32[2][] pkB, bytes32 c0, uint256 ssX, uint256 ssY, bytes32[] ssB, uint256 IIX, bytes32[2][] IIB) {
@@ -257,12 +260,6 @@ contract RingCT {
         uint256 c1 = uint256(sha256(L2));
         uint256[2] memory L1p = JtoA(ecadd(ecmul(uint256(s1), [gx,gy]), ecmul(c1, P1)));
         PrintBool(L1p[0] == L1[0] && L1p[1] == L1[1]);
-        PrintUint(L2[0]);
-        PrintUint(L2[1]);
-        PrintUint(L1p[0]);
-        PrintUint(L1p[1]);
-        PrintUint(L1[0]);
-        PrintUint(L1[1]);
     }
 
     function VerASNL(uint256 P1x, uint256[2][] P1, uint256[2][] P2, uint256[2][] L1, uint256[] s2, uint256 s) {
@@ -310,15 +307,16 @@ contract RingCT {
 
     function verRangeProofs(uint256[2][] Ci, uint256[2][] L1, uint256[] s2, uint256 s) {
         uint256[3] memory HPow2 = ecmul(uint256(sha256(1)), [gx, gy]);
-        uint256[3][] memory H2 = new uint256[3][](ATOMS);
-        for(uint256 i = 0; i < ATOMS; i++) {
+        PrintUint(uint256(ATOMS));
+        uint256[3][] memory H2 = new uint256[3][](64);
+        for(uint256 i = 0; i < 64; i++) {
             H2[i] = HPow2; 
             uint256[3] memory tmp = ecdouble(HPow2);
             HPow2 = tmp;
         }
         
-        uint256[2][] memory CiH = new uint256[2][](ATOMS);
-        for(i = 0; i < ATOMS; i++) {
+        uint256[2][] memory CiH = new uint256[2][](64);
+        for(i = 0; i < 64; i++) {
             uint256[3] memory negateH2 = ecmul(uint256(-1), JtoA(H2[i]));
             CiH[i] = JtoA(ecadd(ecmul(1, Ci[i]), negateH2));
         }
