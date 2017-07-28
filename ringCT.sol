@@ -329,26 +329,26 @@ contract RingCT {
         
         uint256[2][] memory CiH = new uint256[2][](64);
         for(i = 0; i < 64; i++) {
-            if(i == 1) {
-                PrintUint(JtoA(H2[i])[0]);
-                PrintUint(JtoA(H2[i])[1]);
-            }
+            // if(i == 1) {
+            //     PrintUint(JtoA(H2[i])[0]);
+            //     PrintUint(JtoA(H2[i])[1]);
+            // }
             uint256[3] memory negateH2 = ecmul(0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364140, JtoA(H2[i]));
             // uint256[3] memory negateH2 = ecmul(1, [JtoA(H2)[0], -JtoA(H2)[0]%0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141]);
-            if(i == 1) {
-                PrintUint(JtoA(negateH2)[0]);
-                PrintUint(JtoA(negateH2)[1]);
-            }
+            // if(i == 1) {
+            //     PrintUint(JtoA(negateH2)[0]);
+            //     PrintUint(JtoA(negateH2)[1]);
+            // }
             CiH[i] = JtoA(ecadd(ecmul(1, Ci[i]), negateH2));
-            if(i == 1) {
-                PrintUint(CiH[i][0]);
-                PrintUint(CiH[i][1]);
-            }
+            // if(i == 1) {
+            //     PrintUint(CiH[i][0]);
+            //     PrintUint(CiH[i][1]);
+            // }
         }
         uint256 P1x = Ci.length;
-        PrintUint(P1x);
-        PrintUint(CiH[0][0]);
-        PrintUint(CiH[1][0]);
+        // PrintUint(P1x);
+        // PrintUint(CiH[0][0]);
+        // PrintUint(CiH[1][0]);
         VerASNL(P1x, Ci, CiH, L1, s2, s);
     }
 
