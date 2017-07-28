@@ -14,11 +14,11 @@ import time
 from ethjsonrpc import EthJsonRpc
 from ethjsonrpc.constants import BLOCK_TAGS, BLOCK_TAG_EARLIEST, BLOCK_TAG_LATEST
 
-timeTo = 1300
+timeTo = 3000
 debug = False
 rangSigBool = True
 MAX_AMOUNT = 2**64;
-MAX_MIXIN = 100; 
+MAX_MIXIN = 10; 
 crv=ecdsa.SECP256k1
 g = SigningKey.generate(curve=crv)
 P = 2**256 - 2**32 - 2**9 - 2**8 - 2**7 - 2**6 - 2**4 - 1
@@ -788,10 +788,13 @@ def sendVerRang(P1, L1, s2, s):
     print("------ Preparing to send VerRang  -------")
     P1A = [[VerifyingKey.from_string(x).pubkey.point.x(), VerifyingKey.from_string(x).pubkey.point.y()] for x in P1]
     L1A = [[VerifyingKey.from_string(x).pubkey.point.x(), VerifyingKey.from_string(x).pubkey.point.y()] for x in L1]
-    s2a = [to_int_from_bytes(x) for x in s2]
-
+    s2A = [to_int_from_bytes(x) for x in s2]
+    print(P1A)
+    print(L1A)
+    print(s2A)
+    print(to_int_from_bytes(s))
     sig = 'verRangeProofs(uint256[2][],uint256[2][],uint256[],uint256)'
-    args =[P1A, L1A, s2a, to_int_from_bytes(s)]
+    args =[P1A, L1A, s2A, to_int_from_bytes(s)]
     send(sig, args)
 
 
@@ -915,8 +918,9 @@ s = b'\xab\x066\xe0~\x9d7\x16\x94\x17\xf9\x10a&\xc6T\xb5\x89K\x8a\x95T?\xf7\xc6\
 
 # VerASNL(P1, P2, L1, s2, s);
 
+# send('test(uint256)', [0])
 
 sendVerRang(P1, L1, s2, s)
-sendASNL(P1, P2, L1, s2, s)
+# sendASNL(P1, P2, L1, s2, s)
 
 # # test()

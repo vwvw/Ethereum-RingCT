@@ -63,9 +63,19 @@ contract RingCT {
     function test(uint256 i) {
         LogErrorString("-------------------");
         PrintString("We got a nice message:");
-    
+        // uint256[2] memory H2 = [24194490792312677474851755422018715927756452011241033472121668917308367173426, 762643604595742359900314267871241489023137637054224527752204028429349263035];
+        // ecmul(0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364140, H2);
+        // negateH2 = [uint(0), 0, 0];
+        // PrintUint(H2[0]);
+        // PrintUint(negateH2[0]);
+        // PrintUint(negateH2[1]);
+        // PrintUint(negateH2[2]);
+        // JtoA(negateH2);
 
-        PrintString("-------------------");
+        // PrintString("-------------------");
+        // uint256[3] memory x = [33082617962795743205570744003488743091601170115555352340651206104334270898263, 68401247470626407192276552086437755167563400453179624658937812988917870912209, 58650644482957324010308619811336925158244683871107036349667551027489441162660];
+        // PrintUint(JtoA(x)[0]);
+        // PrintUint(JtoA(x)[1]);
     }
 
     function y () {
@@ -80,8 +90,9 @@ contract RingCT {
     }
 
     function verifyRangeProofs(uint256 Cx, uint256 Cy, uint256[2][] CiArray, uint256[2][] L1Array, uint256[] s2Array, uint256[] sArray) {
-        PrintUint(uint256(ATOMS));
+        // PrintUint(uint256(ATOMS));
         uint256 n = sArray.length; //number of range verRangeProofs
+        PrintUint(uint256(n));
         if(Cx != n) {
            LogErrorString("Mismatch in the dimension of the Ci matrix and other matrixes");
            return;
@@ -90,7 +101,7 @@ contract RingCT {
            LogErrorString("Mismatch in the dimension of the Ci matrix");
            return;
         }
-        PrintUint(uint256(ATOMS));
+        // PrintUint(uint256(ATOMS));
         for(uint256 i = 0; i < n; i++) {
             uint256[2][] memory Ci = new uint256[2][](Cy);
             uint256[2][] memory L1 = new uint256[2][](Cy);
@@ -103,7 +114,7 @@ contract RingCT {
             // function verRangeProofs(uint256[2][] Ci, uint256[2][] L1, uint256[] s2, uint256 s) {
             verRangeProofs(Ci, L1, s2, sArray[i]);
         }
-        PrintUint(uint256(ATOMS));
+        // PrintUint(uint256(ATOMS));
     }
 
     function verifySignature(string message, uint256 pkX, uint256 pkY, bytes32[2][] pkB, bytes32 c0, uint256 ssX, uint256 ssY, bytes32[] ssB, uint256 IIX, bytes32[2][] IIB) {
@@ -306,8 +317,9 @@ contract RingCT {
     }
 
     function verRangeProofs(uint256[2][] Ci, uint256[2][] L1, uint256[] s2, uint256 s) {
-        uint256[3] memory HPow2 = ecmul(uint256(sha256(1)), [gx, gy]);
-        PrintUint(uint256(ATOMS));
+        GA = [Gx, Gy];
+        G = pubKey(GA);
+        uint256[3] memory HPow2 = ecmul(uint256(sha256(uint(1))), G.key);
         uint256[3][] memory H2 = new uint256[3][](64);
         for(uint256 i = 0; i < 64; i++) {
             H2[i] = HPow2; 
@@ -317,12 +329,28 @@ contract RingCT {
         
         uint256[2][] memory CiH = new uint256[2][](64);
         for(i = 0; i < 64; i++) {
-            uint256[3] memory negateH2 = ecmul(uint256(-1), JtoA(H2[i]));
+            if(i == 1) {
+                PrintUint(JtoA(H2[i])[0]);
+                PrintUint(JtoA(H2[i])[1]);
+            }
+            uint256[3] memory negateH2 = ecmul(0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364140, JtoA(H2[i]));
+            // uint256[3] memory negateH2 = ecmul(1, [JtoA(H2)[0], -JtoA(H2)[0]%0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141]);
+            if(i == 1) {
+                PrintUint(JtoA(negateH2)[0]);
+                PrintUint(JtoA(negateH2)[1]);
+            }
             CiH[i] = JtoA(ecadd(ecmul(1, Ci[i]), negateH2));
+            if(i == 1) {
+                PrintUint(CiH[i][0]);
+                PrintUint(CiH[i][1]);
+            }
         }
         uint256 P1x = Ci.length;
+        PrintUint(P1x);
+        PrintUint(CiH[0][0]);
+        PrintUint(CiH[1][0]);
         VerASNL(P1x, Ci, CiH, L1, s2, s);
-}
+    }
 
 
 
