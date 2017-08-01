@@ -14,7 +14,7 @@ import time
 from ethjsonrpc import EthJsonRpc
 from ethjsonrpc.constants import BLOCK_TAGS, BLOCK_TAG_EARLIEST, BLOCK_TAG_LATEST
 
-timeTo = 2600
+timeTo = 4000
 debug = True
 rangSigBool = True
 MAX_AMOUNT = 2**64;

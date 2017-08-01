@@ -85,12 +85,14 @@ contract RingCT {
     }
     // def verTransaction(message, newMatrix, I, c_0, ss, infos, rangeSig):
     function verify(string message, string infos, uint256[2] pkDim, bytes32[2][] pkB, bytes32 c0, uint256[2] ssDim, bytes32[] ssB, uint256 IIX, bytes32[2][] IIB, uint256[2] Cdim, uint256[2][] CiArray, uint256[2][] L1Array, uint256[] s2Array, uint256[] sArray) {
-        // verifySignature(string message, pkDim[0], pkDim[1], pkB, c0, ssDim[0], ssDim[1], ssB, IIX, IIB);
-        verifyRangeProofs(Cdim[0], Cdim[1], CiArray, L1Array, s2Array, sArray);
+        // verifySignature(string message, uint256 pkX, uint256 pkY, bytes32[2][] pkB, bytes32 c0, uint256 ssX, uint256 ssY, bytes32[] ssB, uint256 IIX, bytes32[2][] IIB)
+        PrintBool(verifySignature(message, pkDim, pkB, c0, ssDim, ssB, IIX, IIB) && verifyRangeProofs(Cdim, CiArray, L1Array, s2Array, sArray));
     }
 
-    function verifyRangeProofs(uint256 Cx, uint256 Cy, uint256[2][] CiArray, uint256[2][] L1Array, uint256[] s2Array, uint256[] sArray) {
+    function verifyRangeProofs(uint256[2] Cdim, uint256[2][] CiArray, uint256[2][] L1Array, uint256[] s2Array, uint256[] sArray) returns (bool res) {
         // PrintUint(uint256(ATOMS));
+        uint256 Cx = Cdim[0];
+        uint256 Cy = Cdim[1];
         uint256 n = sArray.length; //number of range verRangeProofs
         PrintUint(uint256(n));
         if(Cx != n) {
@@ -102,6 +104,7 @@ contract RingCT {
            return;
         }
         // PrintUint(uint256(ATOMS));
+        res = true;
         for(uint256 i = 0; i < n; i++) {
             uint256[2][] memory Ci = new uint256[2][](Cy);
             uint256[2][] memory L1 = new uint256[2][](Cy);
@@ -112,14 +115,14 @@ contract RingCT {
                 s2[j] = s2Array[i * Cy + j];
             }
             // function verRangeProofs(uint256[2][] Ci, uint256[2][] L1, uint256[] s2, uint256 s) {
-            verRangeProofs(Ci, L1, s2, sArray[i]);
+            res = res && verRangeProofs(Ci, L1, s2, sArray[i]);
         }
         // PrintUint(uint256(ATOMS));
     }
 
-    function verifySignature(string message, uint256 pkX, uint256 pkY, bytes32[2][] pkB, bytes32 c0, uint256 ssX, uint256 ssY, bytes32[] ssB, uint256 IIX, bytes32[2][] IIB) {
+    function verifySignature(string message, uint256[2] pkDim, bytes32[2][] pkB, bytes32 c0, uint256[2] ssDim, bytes32[] ssB, uint256 IIX, bytes32[2][] IIB) returns (bool) {
         
-        if(pkX*pkY != pkB.length) {
+        if(pkDim[0]*pkDim[1] != pkB.length) {
            LogErrorString("Mismatch in the dimension of the key matrix");
            return;
         }
@@ -129,9 +132,9 @@ contract RingCT {
         for(uint256 i = 0; i < IIX; i++) {
             II[i] = pubKeyConverter(IIB[i]);
         }
-        mgSig memory mg = mgSig(ssX, ssY, convertSS(ssB), uint256(c0), IIX, II);
+        mgSig memory mg = mgSig(ssDim[0], ssDim[1], convertSS(ssB), uint256(c0), IIX, II);
         // PrintUint(1);
-        PrintBool(verifyMLSAG(message, pkX, pkY, convertPK(pkB), mg));
+        return (verifyMLSAG(message, pkDim[0], pkDim[1], convertPK(pkB), mg));
     }
 
     function convertPK(bytes32[2][] pkB) internal returns (pubKey[100]) {
@@ -273,7 +276,7 @@ contract RingCT {
         PrintBool(L1p[0] == L1[0] && L1p[1] == L1[1]);
     }
 
-    function VerASNL(uint256 P1x, uint256[2][] P1, uint256[2][] P2, uint256[2][] L1, uint256[] s2, uint256 s) {
+    function VerASNL(uint256 P1x, uint256[2][] P1, uint256[2][] P2, uint256[2][] L1, uint256[] s2, uint256 s) returns (bool) {
         uint256[3] memory LHS = [uint256(0),0,0];
         uint256[3] memory RHS = ecmul(s, [gx, gy]);
         // PrintUint(JtoA(RHS)[0]);
@@ -290,7 +293,7 @@ contract RingCT {
         // PrintUint(JtoA(RHS)[0]);
         // PrintUint(JtoA(LHS)[1]);
         // PrintUint(JtoA(RHS)[1]);
-        PrintBool(JtoA(RHS)[0] == JtoA(LHS)[0] && JtoA(RHS)[1] == JtoA(LHS)[1]);
+        return (JtoA(RHS)[0] == JtoA(LHS)[0] && JtoA(RHS)[1] == JtoA(LHS)[1]);
     }
 
     function VerASNLHelper(uint256 j, uint256[2] L1j, uint256[2] P1j, uint256[2] P2j, uint256 s2j, uint256[3] LHS, uint256[3] RHS) returns (uint256[6] LRHS) {
@@ -316,7 +319,7 @@ contract RingCT {
         LRHS[5] = RHS2[2];
     }
 
-    function verRangeProofs(uint256[2][] Ci, uint256[2][] L1, uint256[] s2, uint256 s) {
+    function verRangeProofs(uint256[2][] Ci, uint256[2][] L1, uint256[] s2, uint256 s) returns (bool) {
         GA = [Gx, Gy];
         G = pubKey(GA);
         uint256[3] memory HPow2 = ecmul(uint256(sha256(uint(1))), G.key);
@@ -349,7 +352,7 @@ contract RingCT {
         // PrintUint(P1x);
         // PrintUint(CiH[0][0]);
         // PrintUint(CiH[1][0]);
-        VerASNL(P1x, Ci, CiH, L1, s2, s);
+        return VerASNL(P1x, Ci, CiH, L1, s2, s);
     }
 
 
