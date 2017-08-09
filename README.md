@@ -20,7 +20,9 @@ RingCT also incorpore [Confidential Transaction](https://people.xiph.org/~greg/c
 ## Python implementation
 The python implementation can be found in the [offline folder](./offline/). 
 ### Setup
-Dependencies: [ecdsa-python](https://github.com/warner/python-ecdsa)
+Dependencies: 
+[ecdsa-python](https://github.com/warner/python-ecdsa)
+[pysha3](https://github.com/tiran/pysha3)
 
 ## Solidity implementation
 This implementation can be found in the [online folder](./online/). The ecadd (elliptic curve addition), ecmul (elliptic curve multiplication), JtoA (Jacobian to Affine elliptic curve point transformation) as well as dependant methods are taken from the work of [Selma Steinhoff](https://www.linkedin.com/in/selmasteinhoff/?ppe=1).

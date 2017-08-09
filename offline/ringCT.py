@@ -10,12 +10,11 @@ from ecdsa.ellipticcurve import CurveFp, INFINITY, Point
 import time
 
 
-from ethjsonrpc import EthJsonRpc
-from ethjsonrpc.constants import BLOCK_TAGS, BLOCK_TAG_EARLIEST, BLOCK_TAG_LATEST
 
 timeTo = 4000
 debug = True
 rangSigBool = True
+truffle = False
 MAX_AMOUNT = 2**64;
 MAX_MIXIN = 10; 
 crv=ecdsa.SECP256k1
@@ -23,17 +22,18 @@ g = SigningKey.generate(curve=crv)
 P = 2**256 - 2**32 - 2**9 - 2**8 - 2**7 - 2**6 - 2**4 - 1
 G = "0479BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8"
 curveOrder = "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141"
-
-connection = EthJsonRpc('localhost', 8545)
-cb = connection.eth_coinbase()
-# contractAddress = "0xa7b1800d46dd564278053eeb06cbdfdce3798c98" 
 ATOMS = 64
+
+if truffle:
+    from ethjsonrpc import EthJsonRpc
+    connection = EthJsonRpc('localhost', 8545)
+    cb = connection.eth_coinbase()
 
 def hash_to_point(pubK):
     return g.from_string(hashlib.sha256(pubK).digest(), curve=crv).verifying_key
 
 def hash_to_point_special(pubK):
-    p = VerifyingKey.from_string(pubK).pubkey.point
+    p = VerifyingKey.from_string(pubK, curve=crv).pubkey.point
     return hash_to_point(to_32_bytes_number(p.x())+ to_32_bytes_number(p.y()))
 
 def to_32_bytes_number (val, endianness='big'):
@@ -118,7 +118,7 @@ def createTransaction(message, inPk, inSk, inAmounts, destinations, outAmounts, 
     ##         infos: an array of ecdhEncode result containing the amount paid to the corresponding output pk
     ##         rangeSig: vector of rangeSig (format TODO)
 
-    print("------ Let's create a the transaction -------")
+    print("------  Let's create a the transaction  ------")
     assert mixin < MAX_MIXIN and mixin > 0, "The number of ring participant should be between 0 and " + str(MAX_MIXIN) + "\n Aborting..."
     assert len(inSk) == len(inPk) and len(inAmounts) == len(inPk), \
         "The number of private key doesn't match the number of public key or the number of input amounts.\n\
@@ -142,7 +142,7 @@ def createTransaction(message, inPk, inSk, inAmounts, destinations, outAmounts, 
             "One secret key doesn't match the corresponding public key.\n\
             Aborting..."
 
-    print("------ All arguments are good, next ! -------")
+    print("------  All arguments are good, next !  ------")
 
     inSkMasks = [] 
     inPkMasks = [] 
@@ -152,14 +152,14 @@ def createTransaction(message, inPk, inSk, inAmounts, destinations, outAmounts, 
         pkMask = g.from_string(skMask, curve=crv).verifying_key
         aH = hash_to_point(to_32_bytes_number(1)).pubkey.point * inAmounts[i]
         pkMaskPoint = pkMask.pubkey.point + aH
-        inPkMasks.append(VerifyingKey.from_public_point(pkMaskPoint).to_string())
+        inPkMasks.append(VerifyingKey.from_public_point(pkMaskPoint, curve=crv).to_string())
 
     destinationsCommitment = []
     infos = []
     rangeSig = []
     outSkMasks = []
     for i in range(0, outNum):
-        print("------Creating rangeproof for amount#" + str(i+1) + "-------")
+        print("------ Creating rangeproof for amount#" + str(i+1) + " ------")
         outCommit, outSkMask, rg = proveRange(outAmounts[i])
         destinationsCommitment.append(outCommit)
         outSkMasks.append(outSkMask)
@@ -167,19 +167,19 @@ def createTransaction(message, inPk, inSk, inAmounts, destinations, outAmounts, 
         hiddenMask, hiddenAmount, senderPk = ecdhEncode(outSkMask, to_32_bytes_number(outAmounts[i]), destinations[i])
         infos.append([hiddenMask, hiddenAmount, senderPk])
 
-    print("------  Rangeproofs are valid. Next   -------")
+    print("------   Rangeproofs are valid. Next    ------")
 
     pkMatrix, pkMasksMatrix, index = populateFromBlockchain(inPk, inPkMasks, mixin)
 
-    print("------Matrix populated, going further!-------")
+    print("------ Matrix populated, going further! ------")
 
     if debug:
         (newMatrix, (I, c_0, ss)) = prepareMG(message, pkMatrix, pkMasksMatrix, inSk, inSkMasks, destinationsCommitment, outSkMasks, index)
-        print("------Transaction created with succes!-------")
+        print("------ Transaction created with succes! ------")
         return newMatrix, destinations, destinationsCommitment, I, c_0, ss, infos, rangeSig
     else:
         (newMatrix, (I, c_0, ss)) = prepareMG(message, pkMatrix, pkMasksMatrix, inSk, inSkMasks, destinationsCommitment, outSkMasks, index)
-        print("------Transaction created with succes!-------")
+        print("------ Transaction created with succes! ------")
         return newMatrix, destinations, destinationsCommitment, I, c_0, ss, infos, rangeSig
 
 def verTransaction(message, newMatrix, I, c_0, ss, infos, rangeSig):
@@ -197,7 +197,7 @@ def prepareMG(message, pubsK, pubsC, inSk, inSkMask, outC, outSkMasks, index):
     # index: index of where in the pubsK matrix our pks are located
     ## returns: same a genMG
 
-    print("------ Preparing the matrix for the MG-------")
+    print("------  Preparing the matrix for the MG ------")
 
     rowsQ = len(pubsK)
     if debug:
@@ -226,21 +226,21 @@ def prepareMG(message, pubsK, pubsC, inSk, inSkMask, outC, outSkMasks, index):
         for j in range(rowsQ):
             matrix[j][i] = pubsK[j][i]
             if i == 0:
-                matrix[j][colsM] = VerifyingKey.from_string(pubsC[j][i]).pubkey.point
+                matrix[j][colsM] = VerifyingKey.from_string(pubsC[j][i], curve=crv).pubkey.point
             else:
-                matrix[j][colsM] = matrix[j][colsM] + VerifyingKey.from_string(pubsC[j][i]).pubkey.point
+                matrix[j][colsM] = matrix[j][colsM] + VerifyingKey.from_string(pubsC[j][i], curve=crv).pubkey.point
 
     for i in range(len(outC)):
         sk[colsM] = sub_2_32b(sk[colsM], outSkMasks[i])
     for i in range(rowsQ):
         for j in range(len(outC)):
-            point = VerifyingKey.from_string(outC[j]).pubkey.point
-            matrix[i][colsM] = matrix[i][colsM] + VerifyingKey.from_public_point(Point(crv.curve, point.x(), (-point.y()) % crv.curve.p(), crv.order)).pubkey.point
+            point = VerifyingKey.from_string(outC[j], curve=crv).pubkey.point
+            matrix[i][colsM] = matrix[i][colsM] + VerifyingKey.from_public_point(Point(crv.curve, point.x(), (-point.y()) % crv.curve.p(), crv.order), curve=crv).pubkey.point
 
     for j in range(rowsQ):
-        matrix[j][colsM] = VerifyingKey.from_public_point(matrix[j][colsM]).to_string()
+        matrix[j][colsM] = VerifyingKey.from_public_point(matrix[j][colsM], curve=crv).to_string()
 
-    print("------ Done with the matrix for the MG-------")
+    print("------  Done with the matrix for the MG ------")
 
     #TODO message
     return (matrix, genMG(message, matrix, sk, index))
@@ -317,7 +317,7 @@ def genMG(message, matrix, sk, index):
         if idx == n-1:
             c_0 = c
 
-    print("------ Done with generating the MLSAG -------")
+    print("------  Done with generating the MLSAG  ------")
 
     if debug:
         # sanity check:
@@ -341,7 +341,7 @@ def genMG(message, matrix, sk, index):
 
     if debug:
         assert verifyMG(message, matrix, I, c_0, ss), "Ring verification failed.\nAborting..."
-        print("--------- Done with verifying the MLSAG  -------")
+        print("------  Done with verifying the MLSAG   ------")
         return I, c_0, ss
     else:
         return I, c_0, ss
@@ -364,7 +364,7 @@ def verifyMG(message, matrix, I, c_0, ss):
     c = c_0
     for idx in range(0, n): 
         for j in range(0, m):
-            # print("----- " + str(idx * m + j) + "")
+            # print("------ " + str(idx * m + j) + "")
             c_PubK = VerifyingKey.from_string(matrix[idx][j], curve=crv).pubkey.point * to_int_from_bytes(c)
             sj_G = g.from_string(ss[idx][j], curve=crv)
             L_point = c_PubK + sj_G.verifying_key.pubkey.point
@@ -436,7 +436,7 @@ def getKeyFromBlockchain():
     #TODO
     ## return: a public key "from the blockchain" in the to_string format
     x = to_32_bytes_number(random.randrange(crv.order))
-    return g.from_string(x).verifying_key.to_string()
+    return g.from_string(x, curve=crv).verifying_key.to_string()
 
 def GenSchnorrNonLinkable(x, P1, P2, index):
     # x: bytes32 number
@@ -445,32 +445,32 @@ def GenSchnorrNonLinkable(x, P1, P2, index):
 
     if index == 0:
         a = to_32_bytes_number(random.randrange(crv.order))
-        L1Point = g.from_string(a).verifying_key.pubkey.point
+        L1Point = g.from_string(a, curve=crv).verifying_key.pubkey.point
         s2 = to_32_bytes_number(random.randrange(crv.order))
         c2 = hashlib.sha256(to_32_bytes_number(L1Point.x()) + to_32_bytes_number(L1Point.y())).digest()
-        L2Point = g.from_string(s2).verifying_key.pubkey.point + (VerifyingKey.from_string(P2).pubkey.point * to_int_from_bytes(c2))
+        L2Point = g.from_string(s2, curve=crv).verifying_key.pubkey.point + (VerifyingKey.from_string(P2, curve=crv).pubkey.point * to_int_from_bytes(c2))
         c1 = hashlib.sha256(to_32_bytes_number(L2Point.x()) + to_32_bytes_number(L2Point.y())).digest()
         s1 = to_32_bytes_number((to_int_from_bytes(a) -  to_int_from_bytes(x) * to_int_from_bytes(c1)) % crv.order)
 
         # sanity check
         if(debug):
-            L1p = g.from_string(s1).verifying_key.pubkey.point + (VerifyingKey.from_string(P1).pubkey.point * to_int_from_bytes(c1))
-            assert VerifyingKey.from_public_point(L1p).to_string() == VerifyingKey.from_public_point(L1Point).to_string(), \
+            L1p = g.from_string(s1, curve=crv).verifying_key.pubkey.point + (VerifyingKey.from_string(P1, curve=crv).pubkey.point * to_int_from_bytes(c1))
+            assert VerifyingKey.from_public_point(L1p, curve=crv).to_string() == VerifyingKey.from_public_point(L1Point, curve=crv).to_string(), \
                 "Sanity check failed in GenSchnorr 1\nAborting..."
     if index == 1:
         a = to_32_bytes_number(random.randrange(crv.order))
-        L2Point = g.from_string(a).verifying_key.pubkey.point
+        L2Point = g.from_string(a, curve=crv).verifying_key.pubkey.point
         s1 = to_32_bytes_number(random.randrange(crv.order))
         c1 = hashlib.sha256(to_32_bytes_number(L2Point.x()) + to_32_bytes_number(L2Point.y())).digest()
-        L1Point = g.from_string(s1).verifying_key.pubkey.point + (VerifyingKey.from_string(P1).pubkey.point * to_int_from_bytes(c1))
+        L1Point = g.from_string(s1, curve=crv).verifying_key.pubkey.point + (VerifyingKey.from_string(P1, curve=crv).pubkey.point * to_int_from_bytes(c1))
         c2 = hashlib.sha256(to_32_bytes_number(L1Point.x()) + to_32_bytes_number(L1Point.y())).digest()
         s2 = to_32_bytes_number((to_int_from_bytes(a) - (to_int_from_bytes(x) * to_int_from_bytes(c2))) % crv.order)
         # sanity check
         if(debug):
-            L2p = g.from_string(s2).verifying_key.pubkey.point + (VerifyingKey.from_string(P2).pubkey.point * to_int_from_bytes(c2))
-            assert VerifyingKey.from_public_point(L2p).to_string() == VerifyingKey.from_public_point(L2Point).to_string(), \
+            L2p = g.from_string(s2, curve=crv).verifying_key.pubkey.point + (VerifyingKey.from_string(P2, curve=crv).pubkey.point * to_int_from_bytes(c2))
+            assert VerifyingKey.from_public_point(L2p, curve=crv).to_string() == VerifyingKey.from_public_point(L2Point, curve=crv).to_string(), \
                 "Sanity check failed in GenSchnorr 2\nAborting..."
-    L1 = VerifyingKey.from_public_point(L1Point).to_string()
+    L1 = VerifyingKey.from_public_point(L1Point, curve=crv).to_string()
     return L1, s1, s2
 
 def VerSchnorrNonLinkable(P1, P2, L1, s1, s2):
@@ -479,12 +479,12 @@ def VerSchnorrNonLinkable(P1, P2, L1, s1, s2):
     # L1: output of GenSchnorr, pubkey in from_string format (32 bytes)
     # s1: output of GenSchnorr, number (32 bytes)
     # s2: output of GenSchnorr, number (32 bytes)
-    L1Point = VerifyingKey.from_string(L1).pubkey.point
+    L1Point = VerifyingKey.from_string(L1, curve=crv).pubkey.point
     c2 = hashlib.sha256(to_32_bytes_number(L1Point.x()) + to_32_bytes_number(L1Point.y())).digest()
-    L2PointA = g.from_string(s2).verifying_key.pubkey.point
-    L2Point = g.from_string(s2).verifying_key.pubkey.point + (VerifyingKey.from_string(P2).pubkey.point * to_int_from_bytes(c2))
+    L2PointA = g.from_string(s2, curve=crv).verifying_key.pubkey.point
+    L2Point = g.from_string(s2, curve=crv).verifying_key.pubkey.point + (VerifyingKey.from_string(P2, curve=crv).pubkey.point * to_int_from_bytes(c2))
     c1 = hashlib.sha256(to_32_bytes_number(L2Point.x()) + to_32_bytes_number(L2Point.y())).digest()
-    L1p = VerifyingKey.from_public_point(g.from_string(s1).verifying_key.pubkey.point + (VerifyingKey.from_string(P1).pubkey.point * to_int_from_bytes(c1))).to_string()
+    L1p = VerifyingKey.from_public_point(g.from_string(s1, curve=crv).verifying_key.pubkey.point + (VerifyingKey.from_string(P1, curve=crv).pubkey.point * to_int_from_bytes(c1)), curve=crv).to_string()
     assert L1 == L1p, "GenSchnorrNonLinkable failed to generate a valid signature.\nAborting..."
 
 def GenASNL(x, P1, P2, indices):
@@ -500,16 +500,16 @@ def GenASNL(x, P1, P2, indices):
     s1 = [None] * n
     s2 = [None] * n
     s = to_32_bytes_number(0)
-    print("Generating the per bit signature of the amount")
+    print("------ Creating signature of the amount ------")
     for j in range(0, n):
         if j % (n//10) == 0:
-            print("[", end='')
+            print("------           [", end='')
             for u in range(0, 10):
-                if u < (j*10)/n:
+                if u < (j*10)/n:git s
                     print("#", end='')
                 else:
                     print(" ", end='')
-            print("]")
+            print("]           ------")
         L1[j], s1[j], s2[j] = GenSchnorrNonLinkable(x[j], P1[j], P2[j], indices[j])
         if debug:
             VerSchnorrNonLinkable(P1[j], P2[j], L1[j], s1[j], s2[j])
@@ -524,22 +524,22 @@ def VerASNL(P1, P2, L1, s2, s):
     # s: 32 bytes number, aggregate of s1
     n = len(P1)
     LHS = to_32_bytes_number(0)
-    RHS = g.from_string(s).verifying_key.pubkey.point
+    RHS = g.from_string(s, curve=crv).verifying_key.pubkey.point
     # print(RHS.x())
     for j in range(0, n):
         c2 = hashlib.sha256(L1[j]).digest()
         # print(to_int_from_bytes(c2))
-        L2Point = g.from_string(s2[j]).verifying_key.pubkey.point + (VerifyingKey.from_string(P2[j]).pubkey.point * to_int_from_bytes(c2))
+        L2Point = g.from_string(s2[j], curve=crv).verifying_key.pubkey.point + (VerifyingKey.from_string(P2[j], curve=crv).pubkey.point * to_int_from_bytes(c2))
         # print(L2Point.x())
-        L2 = VerifyingKey.from_public_point(L2Point).to_string()
+        L2 = VerifyingKey.from_public_point(L2Point, curve=crv).to_string()
         if j == 0:
-            LHS = VerifyingKey.from_string(L1[j]).pubkey.point
+            LHS = VerifyingKey.from_string(L1[j], curve=crv).pubkey.point
         else:
-            LHS = LHS + VerifyingKey.from_string(L1[j]).pubkey.point
+            LHS = LHS + VerifyingKey.from_string(L1[j], curve=crv).pubkey.point
         c1 = hashlib.sha256(L2).digest()
         # print(to_int_from_bytes(c1))
-        RHS = RHS + (VerifyingKey.from_string(P1[j]).pubkey.point * to_int_from_bytes(c1))
-    assert VerifyingKey.from_public_point(LHS).to_string() == VerifyingKey.from_public_point(RHS).to_string(), \
+        RHS = RHS + (VerifyingKey.from_string(P1[j], curve=crv).pubkey.point * to_int_from_bytes(c1))
+    assert VerifyingKey.from_public_point(LHS, curve=crv).to_string() == VerifyingKey.from_public_point(RHS, curve=crv).to_string(), \
         "GenASNL failed to generate a valid signature.\nAborting..."
     # print(LHS.x())
     # print(RHS.x())
@@ -559,7 +559,7 @@ def proveRange(amount):
     HPow2 = hash_to_point(to_32_bytes_number(1)).pubkey.point
     H2 = []
     for i in range(0, ATOMS):
-        H2.append(VerifyingKey.from_public_point(HPow2).to_string())
+        H2.append(VerifyingKey.from_public_point(HPow2, curve=crv).to_string())
         HPow2 = HPow2 * 2
 
     def d2b(n, digits):
@@ -579,26 +579,26 @@ def proveRange(amount):
     Ci = []
     CiH = []
 
-    print("------  Preparing different elements  -------")
+    print("------   Preparing different elements   ------")
     for i in range(0, ATOMS):
         ai.append(to_32_bytes_number(random.randrange(crv.order)))
         mask = add_2_32b(mask, ai[i]) #creating the total mask since you have to pass this to receiver...
         if bb[i] == 0:
-            Ci.append(g.from_string(ai[i]).verifying_key.to_string())
+            Ci.append(g.from_string(ai[i], curve=crv).verifying_key.to_string())
         if bb[i] == 1:
             Ci.append(VerifyingKey.from_public_point(\
-                g.from_string(ai[i]).verifying_key.pubkey.point + \
-                VerifyingKey.from_string(H2[i]).pubkey.point\
+                g.from_string(ai[i], curve=crv).verifying_key.pubkey.point + \
+                VerifyingKey.from_string(H2[i], curve=crv).pubkey.point, curve=crv \
                 ).to_string())
 
 
-        negateH2 = Point(crv.curve, VerifyingKey.from_string(H2[i]).pubkey.point.x(), (-VerifyingKey.from_string(H2[i]).pubkey.point.y()) , crv.order)
-        CiH.append(VerifyingKey.from_public_point(VerifyingKey.from_string(Ci[i]).pubkey.point + negateH2).to_string()) 
+        negateH2 = Point(crv.curve, VerifyingKey.from_string(H2[i], curve=crv).pubkey.point.x(), (-VerifyingKey.from_string(H2[i], curve=crv).pubkey.point.y()) , crv.order)
+        CiH.append(VerifyingKey.from_public_point(VerifyingKey.from_string(Ci[i], curve=crv).pubkey.point + negateH2, curve=crv).to_string()) 
         
         if debug and bb[i] == 1:
             #Sanity check A + h2 - h2 == A
-            assert g.from_string(ai[i]).verifying_key.to_string() == CiH[i], \
-                "Sanity check failed in proveRange !" + bytes.hex(g.from_string(ai[i]).verifying_key.to_string()) +\
+            assert g.from_string(ai[i], curve=crv).verifying_key.to_string() == CiH[i], \
+                "Sanity check failed in proveRange !" + bytes.hex(g.from_string(ai[i], curve=crv).verifying_key.to_string()) +\
                 " ---- " + bytes.hex(CiH[i])
     if rangSigBool == True:
         L1, s2, s = GenASNL(ai, Ci, CiH, bb)
@@ -610,21 +610,21 @@ def proveRange(amount):
     else:
         rg = 1
 
-    C_point = VerifyingKey.from_string(Ci[0]).pubkey.point
+    C_point = VerifyingKey.from_string(Ci[0], curve=crv).pubkey.point
     for i in range(1, len(Ci)):
-        C_point = C_point + VerifyingKey.from_string(Ci[i]).pubkey.point
+        C_point = C_point + VerifyingKey.from_string(Ci[i], curve=crv).pubkey.point
 
     C = to_32_bytes_number(0)
     for i in range(0, len(Ci)):
         C = add_2_32b(C, Ci[i])
 
 
-    C_pk = VerifyingKey.from_public_point(C_point)
+    C_pk = VerifyingKey.from_public_point(C_point, curve=crv)
     if debug:
-        x = hash_to_point(to_32_bytes_number(1)).pubkey.point * amount + g.from_string(mask).verifying_key.pubkey.point
-        assert C_pk.to_string() == VerifyingKey.from_public_point(x).to_string(), \
+        x = hash_to_point(to_32_bytes_number(1)).pubkey.point * amount + g.from_string(mask, curve=crv).verifying_key.pubkey.point
+        assert C_pk.to_string() == VerifyingKey.from_public_point(x, curve=crv).to_string(), \
             "Something went wrong in the genreation of the commitment! " +\
-            bytes.hex(C_pk.to_string()) + " should equal " + bytes.hex(VerifyingKey.from_public_point(x).to_string())
+            bytes.hex(C_pk.to_string()) + " should equal " + bytes.hex(VerifyingKey.from_public_point(x, curve=crv).to_string())
 
     return C_pk.to_string(), mask, rg
 
@@ -633,14 +633,14 @@ def verRangeProofs(rg):
     HPow2 = hash_to_point(to_32_bytes_number(1)).pubkey.point
     H2 = []
     for i in range(0, ATOMS):
-        H2.append(VerifyingKey.from_public_point(HPow2).to_string())
+        H2.append(VerifyingKey.from_public_point(HPow2, curve=crv).to_string())
         HPow2 = HPow2 * 2
     CiH = []
     Ci = rg[0]
     [L1, s2, s] = rg[1]
     for i in range(0, ATOMS):
-        negateH2 = Point(crv.curve, VerifyingKey.from_string(H2[i]).pubkey.point.x(), (-VerifyingKey.from_string(H2[i]).pubkey.point.y()) , crv.order)
-        CiH.append(VerifyingKey.from_public_point(VerifyingKey.from_string(Ci[i]).pubkey.point + negateH2).to_string()) 
+        negateH2 = Point(crv.curve, VerifyingKey.from_string(H2[i], curve=crv).pubkey.point.x(), (-VerifyingKey.from_string(H2[i], curve=crv).pubkey.point.y()) , crv.order)
+        CiH.append(VerifyingKey.from_public_point(VerifyingKey.from_string(Ci[i], curve=crv).pubkey.point + negateH2, curve=crv).to_string()) 
     VerASNL(Ci, CiH, L1, s2, s)
 
 
@@ -652,7 +652,7 @@ def prepare_arguments_to_send_ring(pubkey, c0, ss, II):
     pubkeysAlligned = []
     for i in range(0, len(pubkey)):
         for j in range(0, len(pubkey[0])):
-            pk = VerifyingKey.from_string(pubkey[i][j]).pubkey.point
+            pk = VerifyingKey.from_string(pubkey[i][j], curve=crv).pubkey.point
             pubkeysAlligned.append([to_32_bytes_number(pk.x()), to_32_bytes_number(pk.y())])
 
     ssAlligned = []
@@ -662,7 +662,7 @@ def prepare_arguments_to_send_ring(pubkey, c0, ss, II):
 
     IIAlligned = []
     for i in range(0, len(II)):
-        I = VerifyingKey.from_string(II[i]).pubkey.point
+        I = VerifyingKey.from_string(II[i], curve=crv).pubkey.point
         IIAlligned.append([to_32_bytes_number(I.x()), to_32_bytes_number(I.y())])
     return pubkeysAlligned, c0, ssAlligned, IIAlligned
 
@@ -679,9 +679,9 @@ def prepare_arguments_to_send_rg(rangeSig):
     for i in range(0, n):
         sArray.append(to_int_from_bytes(rangeSig[i][1][2]))
         for j in range(0, len(rangeSig[i][0])):
-            CiP = VerifyingKey.from_string(rangeSig[i][0][j]).pubkey.point
+            CiP = VerifyingKey.from_string(rangeSig[i][0][j], curve=crv).pubkey.point
             CiArray.append([CiP.x(), CiP.y()])
-            L1P = VerifyingKey.from_string(rangeSig[i][1][0][j]).pubkey.point
+            L1P = VerifyingKey.from_string(rangeSig[i][1][0][j], curve=crv).pubkey.point
             L1Array.append([L1P.x(), L1P.y()])
             s2Array.append(to_int_from_bytes(rangeSig[i][1][1][j]))
     return CiArray, L1Array, s2Array, sArray
@@ -701,7 +701,7 @@ def displayFilters():
                 else:
                     print(filterNames[i] + " result " + str(j) + ":\n" + str(bytes.fromhex(change[j]["data"][2:])))
 
-    print("------ All events have been displayed -------")
+    print("------  All events have been displayed  ------")
 
 def send(sig, args):
     # send a function call to the contract
@@ -711,103 +711,109 @@ def send(sig, args):
     # debug
     # sig = 'test(uint256)'
     # args = [1]
+    if truffle:
+        results = connection.call_with_transaction(cb, contractAddress, 
+            sig,\
+            args, gas=99999999999, gas_price=1)
+        bashCommand = 'curl -X POST 127.0.0.1:8545 -m 3 --data ' + results.replace(" ", "")
+        import subprocess
+        process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
+        output, error = process.communicate()
+        print(output)
+        print("ERROR: ",error)
+        print("------ Transaction sent, waiting events ------")
+        displayFilters();
 
-    results = connection.call_with_transaction(cb, contractAddress, 
-        sig,\
-        args, gas=99999999999, gas_price=1)
-    bashCommand = 'curl -X POST 127.0.0.1:8545 -m 3 --data ' + results.replace(" ", "")
-    import subprocess
-    process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
-    output, error = process.communicate()
-    print(output)
-    print("ERROR: ",error)
-    print("------Transaction sent, waiting events-------")
-    displayFilters();
 
 def sendTransaction(message, matrix, I, c, ss, infos, rangeSig):
     #
     ## infos are not used yet
     ## 
-    print("------ Preparing to send Transaction  -------")
-    pubkeysAlligned, c0, ssAlligned, IIAlligned = prepare_arguments_to_send_ring(matrix, c, ss, I)
-    CiArray, L1Array, s2Array, sArray = prepare_arguments_to_send_rg(rangeSig)
+    if truffle:
+        print("------  Preparing to send Transaction   ------")
+        pubkeysAlligned, c0, ssAlligned, IIAlligned = prepare_arguments_to_send_ring(matrix, c, ss, I)
+        CiArray, L1Array, s2Array, sArray = prepare_arguments_to_send_rg(rangeSig)
 
-    # verify(string message, string infos, uint256[2] pkDim, bytes32[2][] pkB, bytes32 c0, uint256[2] ssDim, bytes32[] ssB, uint256 IIX, bytes32[2][] IIB, uint256[2] Cdim, uint256[2][] CiArray, uint256[2][] L1Array, uint256[] s2Array, uint256[] sArray)
-    sig = 'verify(string,string,uint256[2],bytes32[2][],bytes32,uint256[2],bytes32[],uint256,bytes32[2][],uint256[2],uint256[2][],uint256[2][],uint256[],uint256[])'
-    args = [message,infos,\
-        [len(matrix), len(matrix[0])], pubkeysAlligned,\
-        c0,\
-        [len(ss), len(ss[0])], ssAlligned,\
-        len(I), IIAlligned,\
-        [len(rangeSig), len(rangeSig[0][0])], CiArray,\
-        L1Array,\
-        s2Array,\
-        sArray]
-    print(args)
-    send(sig, args)
+        # verify(string message, string infos, uint256[2] pkDim, bytes32[2][] pkB, bytes32 c0, uint256[2] ssDim, bytes32[] ssB, uint256 IIX, bytes32[2][] IIB, uint256[2] Cdim, uint256[2][] CiArray, uint256[2][] L1Array, uint256[] s2Array, uint256[] sArray)
+        sig = 'verify(string,string,uint256[2],bytes32[2][],bytes32,uint256[2],bytes32[],uint256,bytes32[2][],uint256[2],uint256[2][],uint256[2][],uint256[],uint256[])'
+        args = [message,infos,\
+            [len(matrix), len(matrix[0])], pubkeysAlligned,\
+            c0,\
+            [len(ss), len(ss[0])], ssAlligned,\
+            len(I), IIAlligned,\
+            [len(rangeSig), len(rangeSig[0][0])], CiArray,\
+            L1Array,\
+            s2Array,\
+            sArray]
+        print(args)
+        send(sig, args)
 
 
 
 def send_ring(message, pubkey, c0, ss, II):
-    print("------ Preparing to send transaction  -------")
-    pubkeysAlligned, c0, ssAlligned, IIAlligned = prepare_arguments_to_send_ring(pubkey, c0, ss, II)
+    if truffle:    
+        print("------  Preparing to send transaction   ------")
+        pubkeysAlligned, c0, ssAlligned, IIAlligned = prepare_arguments_to_send_ring(pubkey, c0, ss, II)
 
-    sig = 'verifySignature(string,uint256,uint256,bytes32[2][],bytes32,uint256,uint256,bytes32[],uint256,bytes32[2][])'
-    args = [message,\
-        len(pubkey), len(pubkey[0]), pubkeysAlligned,\
-        c0,\
-        len(ss), len(ss[0]), ssAlligned,\
-        len(II), IIAlligned]
-    send(sig, args)
+        sig = 'verifySignature(string,uint256,uint256,bytes32[2][],bytes32,uint256,uint256,bytes32[],uint256,bytes32[2][])'
+        args = [message,\
+            len(pubkey), len(pubkey[0]), pubkeysAlligned,\
+            c0,\
+            len(ss), len(ss[0]), ssAlligned,\
+            len(II), IIAlligned]
+        send(sig, args)
 
 def send_rg(rangeSig):
-    print("------ Preparing to send Transaction  -------")
-    CiArray, L1Array, s2Array, sArray = prepare_arguments_to_send_rg(rangeSig)
-    # verifyRangeProofs(uint256 Cx, uint256 Cy, uint256[2][] CiArray, uint256[2][] L1Array, uint256[] s2Array, uint256[] sArray)
-    sig = 'verifyRangeProofs(uint256,uint256,uint256[2][],uint256[2][],uint256[],uint256[])'
-    args = [len(rangeSig), len(rangeSig[0][0]), CiArray,\
-        L1Array,\
-        s2Array,\
-        sArray]
-    send(sig, args)
+    if truffle:    
+        print("------  Preparing to send Transaction   ------")
+        CiArray, L1Array, s2Array, sArray = prepare_arguments_to_send_rg(rangeSig)
+        # verifyRangeProofs(uint256 Cx, uint256 Cy, uint256[2][] CiArray, uint256[2][] L1Array, uint256[] s2Array, uint256[] sArray)
+        sig = 'verifyRangeProofs(uint256,uint256,uint256[2][],uint256[2][],uint256[],uint256[])'
+        args = [len(rangeSig), len(rangeSig[0][0]), CiArray,\
+            L1Array,\
+            s2Array,\
+            sArray]
+        send(sig, args)
 
 
 def sendASNL(P1, P2, L1, s2, s):
-    print("------ Preparing to send ASNL  -------")
-    P1x = len(P1)
-    P1A = [[VerifyingKey.from_string(x).pubkey.point.x(), VerifyingKey.from_string(x).pubkey.point.y()] for x in P1]
-    P2A = [[VerifyingKey.from_string(x).pubkey.point.x(), VerifyingKey.from_string(x).pubkey.point.y()] for x in P2]
-    L1A = [[VerifyingKey.from_string(x).pubkey.point.x(), VerifyingKey.from_string(x).pubkey.point.y()] for x in L1]
-    s2a = [to_int_from_bytes(x) for x in s2]
+    if truffle:
+        print("------  Preparing to send ASNL   ------")
+        P1x = len(P1)
+        P1A = [[VerifyingKey.from_string(x, curve=crv).pubkey.point.x(), VerifyingKey.from_string(x, curve=crv).pubkey.point.y()] for x in P1]
+        P2A = [[VerifyingKey.from_string(x, curve=crv).pubkey.point.x(), VerifyingKey.from_string(x, curve=crv).pubkey.point.y()] for x in P2]
+        L1A = [[VerifyingKey.from_string(x, curve=crv).pubkey.point.x(), VerifyingKey.from_string(x, curve=crv).pubkey.point.y()] for x in L1]
+        s2a = [to_int_from_bytes(x) for x in s2]
 
-    sig = 'VerASNL(uint256,uint256[2][],uint256[2][],uint256[2][],uint256[],uint256)'
-    args =[P1x, P1A, P2A, L1A, s2a, to_int_from_bytes(s)]
-    send(sig, args)
+        sig = 'VerASNL(uint256,uint256[2][],uint256[2][],uint256[2][],uint256[],uint256)'
+        args =[P1x, P1A, P2A, L1A, s2a, to_int_from_bytes(s)]
+        send(sig, args)
 
 def sendVerRang(P1, L1, s2, s):
-    print("------ Preparing to send VerRang  -------")
-    P1A = [[VerifyingKey.from_string(x).pubkey.point.x(), VerifyingKey.from_string(x).pubkey.point.y()] for x in P1]
-    L1A = [[VerifyingKey.from_string(x).pubkey.point.x(), VerifyingKey.from_string(x).pubkey.point.y()] for x in L1]
-    s2A = [to_int_from_bytes(x) for x in s2]
-    print(P1A)
-    print(L1A)
-    print(s2A)
-    print(to_int_from_bytes(s))
-    sig = 'verRangeProofs(uint256[2][],uint256[2][],uint256[],uint256)'
-    args =[P1A, L1A, s2A, to_int_from_bytes(s)]
-    send(sig, args)
+    if truffle:
+        print("------  Preparing to send VerRang   ------")
+        P1A = [[VerifyingKey.from_string(x, curve=crv).pubkey.point.x(), VerifyingKey.from_string(x, curve=crv).pubkey.point.y()] for x in P1]
+        L1A = [[VerifyingKey.from_string(x, curve=crv).pubkey.point.x(), VerifyingKey.from_string(x, curve=crv).pubkey.point.y()] for x in L1]
+        s2A = [to_int_from_bytes(x) for x in s2]
+        print(P1A)
+        print(L1A)
+        print(s2A)
+        print(to_int_from_bytes(s))
+        sig = 'verRangeProofs(uint256[2][],uint256[2][],uint256[],uint256)'
+        args =[P1A, L1A, s2A, to_int_from_bytes(s)]
+        send(sig, args)
 
 
 
 
 def test():
-    print("------  Entering the first test case. -------")
+    print("------   Entering the first test case.  ------")
 
     for i in range(0, 10):
         x = random.randrange(2**256)
         assert x == to_int_from_bytes(to_32_bytes_number(x)), "bytes <-> int conversion failed, x = %d" % (x)
     
-    print("------ Entering the second test case. -------")
+    print("------  Entering the second test case.  ------")
 
     for i in range(0, 10):
         x = random.randrange(crv.order)
@@ -816,31 +822,30 @@ def test():
         newX, newY = ecdhDecode(newMask, newAmount, sendPubKey, bytes.fromhex(pri))
         assert to_int_from_bytes(newX) == x and to_int_from_bytes(newY) == y, "ECDH failed, x = %d, y = %d" % (x, y)
 
-    print("------  All test passed. Well done !  -------")
+    print("------   All test passed. Well done !   ------")
 
 
-
-with open("contractAddress.txt") as f:
-    content = f.readlines()
-# you may also want to remove whitespace characters like `\n` at the end of each line
-content = [x.strip() for x in content]
-found = False
-i = 0
-while not found and i < len(content):
-    if content[i][0:7] == 'RingCT:':
-        found = True
-        contractAddress = content[i][8:50]
-    i += 1
-if not found:
-    sys.exit("Error message")
-filterNames = ['Log Error', 'Print string', 'Print bool', 'Print address', 'Print uint256', 'PrintStringAndUint(string,uint256)']
-to_keccack = ["LogErrorString(string)", "PrintString(string)", "PrintBool(bool)", "PrintAddress(address)", "PrintUint(uint256)", "PrintStringAndUint(string,uint256)"]
-keccack = []
-for i in range(0, len(to_keccack)):
-    keccack.append(connection.web3_sha3(to_keccack[i]))
-filter = []
-for i in range(0, len(keccack)):
-    filter.append(connection.eth_newFilter(from_block='earliest', address=contractAddress, topics=[keccack[i]]))
+if truffle:
+    with open("contractAddress.txt") as f:
+        content = f.readlines()
+    content = [x.strip() for x in content]
+    found = False
+    i = 0
+    while not found and i < len(content):
+        if content[i][0:7] == 'RingCT:':
+            found = True
+            contractAddress = content[i][8:50]
+        i += 1
+    if not found:
+        sys.exit("Error message")
+    filterNames = ['Log Error', 'Print string', 'Print bool', 'Print address', 'Print uint256', 'PrintStringAndUint(string,uint256)']
+    to_keccack = ["LogErrorString(string)", "PrintString(string)", "PrintBool(bool)", "PrintAddress(address)", "PrintUint(uint256)", "PrintStringAndUint(string,uint256)"]
+    keccack = []
+    for i in range(0, len(to_keccack)):
+        keccack.append(connection.web3_sha3(to_keccack[i]))
+    filter = []
+    for i in range(0, len(keccack)):
+        filter.append(connection.eth_newFilter(from_block='earliest', address=contractAddress, topics=[keccack[i]]))
 
 
 
@@ -858,7 +863,6 @@ pub5 = "04da11a42320ae495014dd9c1c51d43d6c55ca51b7fe9ae3e1258e927e97f48be4e7a447
 
 
 
-
 # helloashjdagfghfhgjhjgjdlas = []
 inAmounts = [3,4]
 inSk = []
@@ -870,7 +874,7 @@ for i in range(0, len(inAmounts)):
 
 outAmount = [1, 6]
 message = "hello"
-outputPub = [VerifyingKey.from_sec(bytes.fromhex(pub)).to_string(), VerifyingKey.from_sec(bytes.fromhex(pub5)).to_string()]
+outputPub = [VerifyingKey.from_string(bytes.fromhex(pub)[1:], curve=crv).to_string(), VerifyingKey.from_string(bytes.fromhex(pub5)[1:], curve=crv).to_string()]
 matrix, destinations, destinationsCommitment, I, c, ss, infos, rangeSig =  createTransaction(message, inPk, inSk, inAmounts, outputPub, outAmount, 2)
 # # verTransaction(message, matrix, I, c, ss, infos, rangeSig)
 
