@@ -1,4 +1,3 @@
-from secp256k1 import * 
 import struct
 import random
 import hashlib
