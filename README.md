@@ -29,7 +29,14 @@ Dependencies:
 [ethJsonRPC]()
 To run the script you will first need to launch an instance of testrpc
 
-'''gtimeout 18000s node_modules/.bin/testrpc -l100000000000'''
+'''bash
+gtimeout 18000s node_modules/.bin/testrpc -l100000000000
+'''
+
+And in another terminal window:
+'''
+truffle migrate > contractAddress.txt && cat contractAddress.txt && python3 ../RingCT/offline/ringCT.py
+'''
 
 ## Solidity implementation
 This implementation can be found in the [online folder](./online/). The ecadd (elliptic curve addition), ecmul (elliptic curve multiplication), JtoA (Jacobian to Affine elliptic curve point transformation) as well as dependant methods are taken from the work of [Selma Steinhoff](https://www.linkedin.com/in/selmasteinhoff/?ppe=1).
