@@ -14,7 +14,7 @@ import time
 timeTo = 4000
 debug = True
 rangSigBool = True
-truffle = False
+truffle = True
 MAX_AMOUNT = 2**64;
 MAX_MIXIN = 10; 
 crv=ecdsa.SECP256k1
