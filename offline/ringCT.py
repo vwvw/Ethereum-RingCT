@@ -505,7 +505,7 @@ def GenASNL(x, P1, P2, indices):
         if j % (n//10) == 0:
             print("------           [", end='')
             for u in range(0, 10):
-                if u < (j*10)/n:git s
+                if u < (j*10)/n:
                     print("#", end='')
                 else:
                     print(" ", end='')
