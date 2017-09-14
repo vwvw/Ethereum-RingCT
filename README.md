@@ -28,13 +28,14 @@ Dependencies:
 
 [ethJsonRPC]()
 
-To run the script you will first need to launch an instance of testrpc
+To run the script you will first need to launch an instance of testrpc.
+From your truffle-dapp folder launch the following command:
 
 ```bash
-gtimeout 18000s node_modules/.bin/testrpc -l100000000000
+node_modules/.bin/testrpc -l100000000000
 ```
 
-And in another terminal window:
+And in another terminal window again from the truffle-dapp folder:
 ```bash
 truffle migrate > contractAddress.txt && cat contractAddress.txt && python3 ../RingCT/offline/ringCT.py
 ```
