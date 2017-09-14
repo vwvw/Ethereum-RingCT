@@ -12,9 +12,11 @@ import time
 
 
 timeTo = 4000
+# Flags to accelerate debugging
 debug = True
 rangSigBool = True
 truffle = True
+
 MAX_AMOUNT = 2**64;
 MAX_MIXIN = 10; 
 crv=ecdsa.SECP256k1
@@ -29,13 +31,16 @@ if truffle:
     connection = EthJsonRpc('localhost', 8545)
     cb = connection.eth_coinbase()
 
+# Takes a public key, hash it and convert the hash to a valid point. This is achieved by taking the hash as the secret exponent of a new public key.
 def hash_to_point(pubK):
     return g.from_string(hashlib.sha256(pubK).digest(), curve=crv).verifying_key
 
+# hash a public key by first adding the two integers that compose it.
 def hash_to_point_special(pubK):
     p = VerifyingKey.from_string(pubK, curve=crv).pubkey.point
     return hash_to_point(to_32_bytes_number(p.x())+ to_32_bytes_number(p.y()))
 
+# Convert an integer to its bytes representation (32 bytes).
 def to_32_bytes_number (val, endianness='big'):
     # see https://stackoverflow.com/questions/8730927/convert-python-long-int-to-fixed-size-byte-array/28057222
     fmt = '%%0%dx' % 64
@@ -45,12 +50,16 @@ def to_32_bytes_number (val, endianness='big'):
         s = s[::-1]
     return s
 
+# Inverse of to_32_bytes_number. Convert a 32 bytes number to its integer representation.
 def to_int_from_bytes(val, endianness= 'big'):
     return int.from_bytes(val, byteorder=endianness)
 
+# Add two integers from their 32 bytes representation.
+# Return a 32 bytes representation of the result. 
 def add_2_32b(a, b):
     return to_32_bytes_number((to_int_from_bytes(a) + to_int_from_bytes(b)) % crv.order)
 
+# Substract the second argument from the first. Return the result. Everything is integers in 32 bytes represenation.
 def sub_2_32b(a, b):
     return to_32_bytes_number((to_int_from_bytes(a) - to_int_from_bytes(b)) % crv.order)
 
@@ -68,7 +77,7 @@ def sub_2_32b(a, b):
 #     contractAddress = connection.get_contract_address(contract_tx)
 #     print("addre" + contractAddress)
 
-
+# This function encode the a number (the amount) so that it can only be decoded with the receiver private key. Amount is however only masked, calculation can still be applied on it.
 def ecdhEncode(mask, amount, receiverPk): 
     # mask: the mask to hide (32 bytes number)
     # amount: the amount to hide (32 bytes number)
@@ -87,6 +96,7 @@ def ecdhEncode(mask, amount, receiverPk):
     newAmount = (to_int_from_bytes(amount) + sharedSecretInt) % crv.order
     return  to_32_bytes_number(newMask), to_32_bytes_number(newAmount), senderPk.to_string()
 
+# Fucntion doing the deocding of ecdhEncode. Take the mask, the masked amount and appropriate public keys and return the decoded amount.
 def ecdhDecode(mask, amount, senderPk, receiverSk): 
     # counter method to ecdh encode
     # mask: the hidden mask (32 bytes number)
@@ -102,6 +112,7 @@ def ecdhDecode(mask, amount, senderPk, receiverSk):
     newMask = (to_int_from_bytes(mask) - sharedSecretInt) % crv.order
     newAmount = (to_int_from_bytes(amount) - sharedSecretInt) % crv.order
     return to_32_bytes_number(newMask), to_32_bytes_number(newAmount)
+
 
 def createTransaction(message, inPk, inSk, inAmounts, destinations, outAmounts, mixin):
     # inPk: vector of public keys corresponding to the owner inputs(sec format)
