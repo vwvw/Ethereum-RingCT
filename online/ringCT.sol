@@ -3,9 +3,6 @@
 
 contract RingCT {
 
-
-
-
     struct pubKey {
         uint256[2] key;
     }
@@ -40,7 +37,7 @@ contract RingCT {
     }
 
 
-
+    // logging mechanisms. Event listeners have to be configured to receive them.
     event LogErrorString(string _value);
     event PrintString(string _value);
     event PrintBool(bool _value);
@@ -51,50 +48,40 @@ contract RingCT {
     // Base point (generator) G
     uint256 constant Gx = 0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798;
     uint256 constant Gy = 0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8;
-    uint256 ATOMS = 64;
     uint256[2] GA = [Gx, Gy];
     pubKey G = pubKey(GA);
-    int256 ECADD = 5;
-    int256 ECMUL = 6;
-    int256 MODEXP = 7;
     
     bytes32[] keyImagesUsed;
 
-    function test(uint256 i) {
-        LogErrorString("-------------------");
-        PrintString("We got a nice message:");
-        // uint256[2] memory H2 = [24194490792312677474851755422018715927756452011241033472121668917308367173426, 762643604595742359900314267871241489023137637054224527752204028429349263035];
-        // ecmul(0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364140, H2);
-        // negateH2 = [uint(0), 0, 0];
-        // PrintUint(H2[0]);
-        // PrintUint(negateH2[0]);
-        // PrintUint(negateH2[1]);
-        // PrintUint(negateH2[2]);
-        // JtoA(negateH2);
-
-        // PrintString("-------------------");
-        // uint256[3] memory x = [33082617962795743205570744003488743091601170115555352340651206104334270898263, 68401247470626407192276552086437755167563400453179624658937812988917870912209, 58650644482957324010308619811336925158244683871107036349667551027489441162660];
-        // PrintUint(JtoA(x)[0]);
-        // PrintUint(JtoA(x)[1]);
-    }
-
-    function y () {
-        PrintUint(uint256(1));
-        // PrintUint(JtoA(ecmul(uint256(71449910333075107539383320123832160761226081732216163042225240336241879234277), G.key))[1]);
-        
-    }
-    // def verTransaction(message, newMatrix, I, c_0, ss, infos, rangeSig):
+    // Verify a RingCT transaction. It takes the different elements of a transaction as argument.
+    // message: Text that can be deciphred by the receiver. 
+    // infos: additional infos to be passed in the ring. 
+    // pkDim: Array of two integers in bytes32 format. They define the size of the public key matrix.
+    // pkB: An array of public keys. Each public key is defined in affine coordinate by two integers in bytes32 format. The array is itself an alligned version of a 2d array with dimension contained in pkDim.
+    // c0: The first commitment value. Bytes32 format
+    // ssDim: Same as pkDim but for the ss matrix. 
+    // ssB: Similar ot pkB. Array of public keys stored as two integers in bytes32 format. The array is a condensed form of a 2d array of dimension ssDim. 
+    // IIx: Number of II in the signature. 
+    // IIB: Array of public key playing the role of II. Dimension coming from IIX.
+    // Cdim: Similar to pkDim. Contain two integers corresponding to the size of the unalligned array CiArray.
+    // CiArray: Alligned array of public keys. Similar to pkB. 
+    // L1Array: Alligned array of public keys representing the L1 of the range proofs.
+    // 
     function verify(string message, string infos, uint256[2] pkDim, bytes32[2][] pkB, bytes32 c0, uint256[2] ssDim, bytes32[] ssB, uint256 IIX, bytes32[2][] IIB, uint256[2] Cdim, uint256[2][] CiArray, uint256[2][] L1Array, uint256[] s2Array, uint256[] sArray) {
         // verifySignature(string message, uint256 pkX, uint256 pkY, bytes32[2][] pkB, bytes32 c0, uint256 ssX, uint256 ssY, bytes32[] ssB, uint256 IIX, bytes32[2][] IIB)
         PrintBool(verifySignature(message, pkDim, pkB, c0, ssDim, ssB, IIX, IIB) && verifyRangeProofs(Cdim, CiArray, L1Array, s2Array, sArray));
     }
 
+    // This function takes the different elements representing one or multiple rangeproof and check that they come together as a valid rangeproof. 
+    // Cdim: dimentsion of the matrix of commitments.
+    // CiArray: matrix of commitments represented as pair of two ntegers.
+    // L1Array; matrix of the L1 eleemnts of a rangeproofs. They are also represented as two integers that make an elliptic point. 
+    // s2Array: array of integer containing for each rangeproof all the s2 values one after another.
+    // sArray: array of integers representing the s value for each of the rangeproof. 
     function verifyRangeProofs(uint256[2] Cdim, uint256[2][] CiArray, uint256[2][] L1Array, uint256[] s2Array, uint256[] sArray) returns (bool res) {
-        // PrintUint(uint256(ATOMS));
         uint256 Cx = Cdim[0];
         uint256 Cy = Cdim[1];
         uint256 n = sArray.length; //number of range verRangeProofs
-        PrintUint(uint256(n));
         if(Cx != n) {
            LogErrorString("Mismatch in the dimension of the Ci matrix and other matrixes");
            return;
@@ -103,12 +90,12 @@ contract RingCT {
            LogErrorString("Mismatch in the dimension of the Ci matrix");
            return;
         }
-        // PrintUint(uint256(ATOMS));
         res = true;
         for(uint256 i = 0; i < n; i++) {
             uint256[2][] memory Ci = new uint256[2][](Cy);
             uint256[2][] memory L1 = new uint256[2][](Cy);
             uint256[] memory s2 = new uint256[](Cy);
+            // separating the elements for each rangeproof
             for(uint256 j = 0; j < Cy; j++) {
                 Ci[j] = CiArray[i * Cy + j];
                 L1[j] = L1Array[i * Cy + j];
@@ -117,9 +104,9 @@ contract RingCT {
             // function verRangeProofs(uint256[2][] Ci, uint256[2][] L1, uint256[] s2, uint256 s) {
             res = res && verRangeProofs(Ci, L1, s2, sArray[i]);
         }
-        // PrintUint(uint256(ATOMS));
     }
 
+    // This function takes the different elements representing a signature and verify that they represent a valid signature. 
     function verifySignature(string message, uint256[2] pkDim, bytes32[2][] pkB, bytes32 c0, uint256[2] ssDim, bytes32[] ssB, uint256 IIX, bytes32[2][] IIB) returns (bool) {
         
         if(pkDim[0]*pkDim[1] != pkB.length) {
@@ -133,10 +120,11 @@ contract RingCT {
             II[i] = pubKeyConverter(IIB[i]);
         }
         mgSig memory mg = mgSig(ssDim[0], ssDim[1], convertSS(ssB), uint256(c0), IIX, II);
-        // PrintUint(1);
         return (verifyMLSAG(message, pkDim[0], pkDim[1], convertPK(pkB), mg));
     }
 
+    // Takes an array of public keys in bytes format and returns an array containing the same public keys in pubkey format. 
+    // pkB: the array of publc keys. It should contain less than 100 public keys.
     function convertPK(bytes32[2][] pkB) internal returns (pubKey[100]) {
         // assert(pkB.length) < 100);
         pubKey[100] memory pk;
@@ -145,7 +133,9 @@ contract RingCT {
         }
         return pk;
     }
-
+    
+    // This function takes an array containing the ss in bytes format and transform them in an array of integer.
+    // ssB: array of bytes containing the ss in bytes32 format. Should have less than 100 elements.
     function convertSS(bytes32[] ssB) internal returns (uint256[100]) {
         // assert(ssB.length) < 100);
         uint256[100] memory ss;
@@ -155,6 +145,8 @@ contract RingCT {
         return ss;
     }
 
+    // This function takes a pair of integer stored as bytes and transform them in a pubkey object. 
+    // p: The public key as a pair of bytes
     function pubKeyConverter(bytes32[2] p) internal returns (pubKey) {
         uint256 x = uint256(p[0]);
         uint256 y = uint256(p[1]);
@@ -162,6 +154,13 @@ contract RingCT {
         return pubKey(pp);
     }
 
+    // This function take a MLSAG siganture mg and the element needed to verify that it is valid and proceed to verify it.
+    //      return a bool.
+    // messageString: string of the optional message
+    // pkX: number of line in the public key matrix. 
+    // pkY: number of columns in the public key matrix. 
+    // pubKey: the actual matrix of public keys represented as pubkey struct. All public keys are alligned one after the other. 
+    // mg: the mgSig to verify.
     function verifyMLSAG(string messageString, uint256 pkX, uint256 pkY, pubKey[100] km, mgSig mg) internal returns (bool) {
         // VER: A polynomial time algorithm which takes as inputs 
         // a security parameter k,
@@ -170,7 +169,6 @@ contract RingCT {
         // and a signature σ on km, m, 
         // and outputs true or false, depending on whether the signature verifies or not. 
         // For completeness, the MLSAG scheme must satisfy VER(SIGN(m,L,x),m,L)=true with overwhelming probability at security level k.
-        // PrintStringAndUint("hello", 12);
         if(mg.ssX != pkX || mg.ssY != pkY) {
             LogErrorString("Mismatch in the dimension of the key matrix and the ss matrix in the signature");
         }
@@ -181,61 +179,49 @@ contract RingCT {
         uint256 m = mg.ssY;
         uint256[] memory c = new uint256[](n);
         c[n - 1] = mg.cc;
-        // PrintUint(mg.cc);
-        // PrintUint(c[n-1]);
-        // PrintUint(n-1);
-        // PrintUint((i-1)%(n+1));
-        // PrintUint(c[(i-1)%(n)]);
-        // PrintUint(333333333);
         for(uint256 i = 0; i < n; i++) {
           c[i] = calculateC(messageString, [m, i, c[(i+n-1)%(n)]], km, mg);
         }
-        // return true;
         return mg.cc == c[c.length-1];
     }
 
+    // This function take different arguments and calculate a commitment c for it. 
+    // TODO
     function calculateC (string messageString, uint256[3] restOfStuff, pubKey[100] km, mgSig mg) internal returns (uint256 c) {
         // restOfStuff [m, i, cBefore]
         uint256[2][] memory L = new uint256[2][](restOfStuff[0]);
         uint256[2][] memory R = new uint256[2][](restOfStuff[0]);
         for(uint256 j = 0; j < restOfStuff[0]; j++) {
             L[j] = JtoA(ecadd(L1(j, restOfStuff, mg), L2(j, restOfStuff, km)));
-            // PrintUint(L[j][0]);
-            // PrintUint(L[j][1]);
-            // PrintUint(uint256(1111111111111111));
             R[j] = JtoA(ecadd(R1(j, restOfStuff, km, mg), R2(j, restOfStuff, mg)));
-            // PrintUint(R[j][0]);
-            // PrintUint(R[j][1]);
-            // PrintUint(uint256(2222222222222222));
         }
-        // return uint256(sha3(messageString));
         c =  uint256(sha3(messageString, L, R));
-        // PrintUint(8888888);
-        // PrintUint(c);
-        // PrintUint(8888888);
         return c;
     }
 
+    // This function compute the first part of L in a MLSAG
+    // j: the index at which we currently are in the number of ring to sign
+    // restOfstuff: triple containing m: the number of columns
+    //                                i: the index in the ring
+    //                                cBefore: the c (hash of L, R and c) of the previous round.
+    // mg: contains the ss array needed for computing the first part of L
     function L1 (uint256 j, uint256[3] restOfStuff, mgSig mg) internal returns (uint256[3] res) {
         GA = [Gx, Gy];
         G = pubKey(GA);
         res = ecmul(mg.ss[restOfStuff[1] * restOfStuff[0] + j], G.key);
-        // PrintUint(3333333);
-        // PrintUint(JtoA(res)[0]);
-        // PrintUint(JtoA(res)[1]);
-        // PrintUint(3333333);
         return res;
     }
 
+    // This function compute the other part of L for MLSAG
+    // @TODO
+    // km: the patrix containing the public keys
     function L2 (uint256 j, uint256[3] restOfStuff, pubKey[100] km) internal returns (uint256[3] res) {
         res =  ecmul(restOfStuff[2], km[restOfStuff[1] * restOfStuff[0] + j].key);
-        // PrintUint(4444444);
-        // PrintUint(JtoA(res)[0]);
-        // PrintUint(JtoA(res)[1]);
-        // PrintUint(4444444);
         return res;
     }
 
+    // At each round of the MLSAG we need to compute R. This function compute a first part of it that will be added to R2. 
+    // TODO
     function R1 (uint256 j, uint256[3] restOfStuff, pubKey[100] km, mgSig mg) internal returns (uint256[3] res) {
         uint256 A = mg.ss[restOfStuff[1] * restOfStuff[0] + j];
         uint256 B = uint(sha256(km[restOfStuff[1] * restOfStuff[0] + j].key));
@@ -243,19 +229,13 @@ contract RingCT {
         G = pubKey(GA);
         uint256[2] memory C = JtoA(ecmul(B, G.key));
         res = ecmul(A, C);
-        // PrintUint(5555555);
-        // PrintUint(JtoA(res)[0]);
-        // PrintUint(JtoA(res)[1]);
-        // PrintUint(5555555);
         return res;
     }
 
+    // This function compute the second part of R that need to be added to R1.
+    // TODO
     function R2 (uint256 j, uint256[3] restOfStuff, mgSig mg) internal returns (uint256[3] res) {
         res = ecmul(restOfStuff[2], mg.II[j].key);
-        // PrintUint(6666666);
-        // PrintUint(JtoA(res)[0]);
-        // PrintUint(JtoA(res)[1]);
-        // PrintUint(6666666);
         return res;
     }
 
@@ -266,7 +246,12 @@ contract RingCT {
     uint256 constant gx=55066263022277343669578718895168534326250603453777594175500187360389116729240;
     uint256 constant gy=32670510020758816978083085130507043184471273380659243275938904335757337482424;
     
-
+    // This function verifiy that P1, P2, L1, s1, s2 froms a valid Schnorr signature. 
+    // P1: public key represented as a pair of integer
+    // P2: public key represented as a pair of integer
+    // L1: TODO
+    // s1: random hiding value represented as bytes32
+    // s2: random hiding value represented as byzes32
     function VerSchnorrNonLinkable(uint256[2] P1, uint256[2] P2, uint256[2] L1, bytes32 s1, bytes32 s2) {
         uint256 c2 = uint256(sha256(L1));
         uint256[3] memory x = ecmul(c2, P2);
@@ -276,10 +261,16 @@ contract RingCT {
         PrintBool(L1p[0] == L1[0] && L1p[1] == L1[1]);
     }
 
+    // This function takes the different elements forming a Aggregate Schnorr Non-linkable Ring Signature and try to validate it.
+    // P1x: number of public keys.
+    // P1: array of public keys represented as pair of integer.
+    // P2: second array of public keys represented as pair of integer.
+    // L1: Array of L1 elements for the Schnorr signatures.
+    // s2: TODO
+    // s: TODO
     function VerASNL(uint256 P1x, uint256[2][] P1, uint256[2][] P2, uint256[2][] L1, uint256[] s2, uint256 s) returns (bool) {
         uint256[3] memory LHS = [uint256(0),0,0];
         uint256[3] memory RHS = ecmul(s, [gx, gy]);
-        // PrintUint(JtoA(RHS)[0]);
         for(uint256 j = 0; j < P1x; j++) {
             uint256[6] memory LHRS = VerASNLHelper(j, L1[j], P1[j], P2[j], s2[j], LHS, RHS);
             LHS[0] = LHRS[0];
@@ -289,18 +280,14 @@ contract RingCT {
             RHS[1] = LHRS[4];
             RHS[2] = LHRS[5];
         }
-        // PrintUint(JtoA(LHS)[0]);
-        // PrintUint(JtoA(RHS)[0]);
-        // PrintUint(JtoA(LHS)[1]);
-        // PrintUint(JtoA(RHS)[1]);
         return (JtoA(RHS)[0] == JtoA(LHS)[0] && JtoA(RHS)[1] == JtoA(LHS)[1]);
     }
 
+    // Helper function to verify ASNL, needed because of the number of arguments. 
+    // TODO 
     function VerASNLHelper(uint256 j, uint256[2] L1j, uint256[2] P1j, uint256[2] P2j, uint256 s2j, uint256[3] LHS, uint256[3] RHS) returns (uint256[6] LRHS) {
         uint256 c2 = uint256(sha256(L1j));
-        // PrintUint(c2);
         uint256[3] memory L2 = ecadd(ecmul(s2j, [gx, gy]), ecmul(c2, P2j));
-        // PrintUint(JtoA(L2)[0]);
         uint256[3] memory LHS2 = [uint256(0), 0,0];
         if(j == uint256(0)) {
             LHS2 = ecmul(1, L1j);
@@ -309,7 +296,6 @@ contract RingCT {
             LHS2 = ecadd(LHS, ecmul(1, L1j));
         }
         uint256 c1 = uint256(sha256(JtoA(L2)));
-        // PrintUint(c1);
         uint256[3] memory RHS2 = ecadd(RHS, ecmul(c1, P1j));
         LRHS[0] = LHS2[0];
         LRHS[1] = LHS2[1];
@@ -319,6 +305,8 @@ contract RingCT {
         LRHS[5] = RHS2[2];
     }
 
+    // This function takes a complete rangeproof as argument and try to validate it.
+    // TODO
     function verRangeProofs(uint256[2][] Ci, uint256[2][] L1, uint256[] s2, uint256 s) returns (bool) {
         GA = [Gx, Gy];
         G = pubKey(GA);
@@ -332,26 +320,10 @@ contract RingCT {
         
         uint256[2][] memory CiH = new uint256[2][](64);
         for(i = 0; i < 64; i++) {
-            // if(i == 1) {
-            //     PrintUint(JtoA(H2[i])[0]);
-            //     PrintUint(JtoA(H2[i])[1]);
-            // }
             uint256[3] memory negateH2 = ecmul(0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364140, JtoA(H2[i]));
-            // uint256[3] memory negateH2 = ecmul(1, [JtoA(H2)[0], -JtoA(H2)[0]%0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141]);
-            // if(i == 1) {
-            //     PrintUint(JtoA(negateH2)[0]);
-            //     PrintUint(JtoA(negateH2)[1]);
-            // }
             CiH[i] = JtoA(ecadd(ecmul(1, Ci[i]), negateH2));
-            // if(i == 1) {
-            //     PrintUint(CiH[i][0]);
-            //     PrintUint(CiH[i][1]);
-            // }
         }
         uint256 P1x = Ci.length;
-        // PrintUint(P1x);
-        // PrintUint(CiH[0][0]);
-        // PrintUint(CiH[1][0]);
         return VerASNL(P1x, Ci, CiH, L1, s2, s);
     }
 
