@@ -1,4 +1,4 @@
-var ringCT = artifacts.require("./online/ringCT.sol");
+var ringCT = artifacts.require("./ringCT.sol");
 var RingSig = artifacts.require("./RingSig.sol");
 module.exports = function(deployer) {
   deployer.deploy(RingSig);

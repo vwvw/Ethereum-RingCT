@@ -1,7 +1,7 @@
  pragma solidity ^0.4.11;
 
 
-contract RingCT {
+contract ringCT {
 
     struct pubKey {
         uint256[2] key;
