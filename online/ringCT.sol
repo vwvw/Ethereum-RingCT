@@ -7,12 +7,6 @@ contract ringCT {
         uint256[2] key;
     }
     
-    struct boroSig {
-        bytes32[64] s0;
-        bytes32[64] s1;
-        bytes32 ee;
-    }
-    
     //just contains the necessary keys to represent MLSAG. sigs
     //c.f. http://eprint.iacr.org/2015/1098
     struct mgSig {
@@ -24,18 +18,6 @@ contract ringCT {
         pubKey[100] II; // m x 1
     }
     
-    struct rangeSig {
-        bytes32[64] s0;
-        bytes32[64] s1;
-        bytes32 ee;
-        bytes32[64] Ci;
-    }
-
-    struct Ring {
-        mgSig[] MGs; // simple rct has N, full has 1
-        rangeSig[] RGs;
-    }
-
 
     // logging mechanisms. Event listeners have to be configured to receive them.
     event LogErrorString(string _value);

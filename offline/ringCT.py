@@ -8,7 +8,7 @@ from ecdsa import SigningKey, VerifyingKey
 from six import b
 from ecdsa.ellipticcurve import CurveFp, INFINITY, Point
 import time
-
+import sys
 
 
 timeTo = 4000
@@ -843,7 +843,7 @@ if truffle:
     found = False
     i = 0
     while not found and i < len(content):
-        if content[i][0:7] == 'RingCT:':
+        if content[i][0:7] == 'ringCT:':
             found = True
             contractAddress = content[i][8:50]
         i += 1
