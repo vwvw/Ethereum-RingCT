@@ -33,7 +33,6 @@ contract ringCT {
     uint256[2] GA = [Gx, Gy];
     pubKey G = pubKey(GA);
     
-    bytes32[] keyImagesUsed;
 
     // Verify a RingCT transaction. It takes the different elements of a transaction as argument.
     // message: Text that can be deciphred by the receiver. 
@@ -167,8 +166,11 @@ contract ringCT {
         return mg.cc == c[c.length-1];
     }
 
-    // This function take different arguments and calculate a commitment c for it. 
-    // TODO
+    // This function take different arguments and calculate a commitment c for it. The arguments represent one iteration of the ring computation.
+    // messageString: the message to be embedded in the ring
+    // restOfStuff: array containing the size of the ring (m), the index at which we currently are, and the previous commitment to be hashed in
+    // km: matrix of public key
+    // mg: the mgSig to use
     function calculateC (string messageString, uint256[3] restOfStuff, pubKey[100] km, mgSig mg) internal returns (uint256 c) {
         // restOfStuff [m, i, cBefore]
         uint256[2][] memory L = new uint256[2][](restOfStuff[0]);
@@ -203,7 +205,12 @@ contract ringCT {
     }
 
     // At each round of the MLSAG we need to compute R. This function compute a first part of it that will be added to R2. 
-    // TODO
+    // j: the index at which we currently are in the number of ring to sign
+    // restOfstuff: triple containing m: the number of columns
+    //                                i: the index in the ring
+    //                                cBefore: the c (hash of L, R and c) of the previous round.
+    // km: the matrix of public key
+    // mg: contains the ss array needed for computing the first part of L
     function R1 (uint256 j, uint256[3] restOfStuff, pubKey[100] km, mgSig mg) internal returns (uint256[3] res) {
         uint256 A = mg.ss[restOfStuff[1] * restOfStuff[0] + j];
         uint256 B = uint(sha256(km[restOfStuff[1] * restOfStuff[0] + j].key));
@@ -215,16 +222,14 @@ contract ringCT {
     }
 
     // This function compute the second part of R that need to be added to R1.
-    // TODO
+    // See function description of R1
     function R2 (uint256 j, uint256[3] restOfStuff, mgSig mg) internal returns (uint256[3] res) {
         res = ecmul(restOfStuff[2], mg.II[j].key);
         return res;
     }
 
-    uint256 constant a=0;
-    uint256 constant b=7;
-    uint256 constant p=115792089237316195423570985008687907853269984665640564039457584007908834671663;
-    uint256 constant n=115792089237316195423570985008687907852837564279074904382605163141518161494337;
+
+    // The constant following is used to do ellicptic curve computation
     uint256 constant gx=55066263022277343669578718895168534326250603453777594175500187360389116729240;
     uint256 constant gy=32670510020758816978083085130507043184471273380659243275938904335757337482424;
     
@@ -266,7 +271,8 @@ contract ringCT {
     }
 
     // Helper function to verify ASNL, needed because of the number of arguments. 
-    // TODO 
+    // LHS: left hand side of siganture
+    // RHS: right hand side of signature
     function VerASNLHelper(uint256 j, uint256[2] L1j, uint256[2] P1j, uint256[2] P2j, uint256 s2j, uint256[3] LHS, uint256[3] RHS) returns (uint256[6] LRHS) {
         uint256 c2 = uint256(sha256(L1j));
         uint256[3] memory L2 = ecadd(ecmul(s2j, [gx, gy]), ecmul(c2, P2j));
@@ -288,7 +294,10 @@ contract ringCT {
     }
 
     // This function takes a complete rangeproof as argument and try to validate it.
-    // TODO
+    // Ci: array of hidden commitment as a pair of elliptic points 
+    // L1: array of elliptic point, first part of range proof
+    // s2: array of uint, the s2 value for the range proof (see paper)
+    // s: uint need for the range proof, (see paper)
     function verRangeProofs(uint256[2][] Ci, uint256[2][] L1, uint256[] s2, uint256 s) returns (bool) {
         GA = [Gx, Gy];
         G = pubKey(GA);
@@ -310,7 +319,7 @@ contract ringCT {
     }
 
 
-
+    // The following code snippets are used for elliptic curve computations
 
     //Helper functions from ECMath.sol
     // point addition for elliptic curve in jacobian coordinates
