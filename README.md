@@ -26,7 +26,13 @@ Dependencies:
 
 [pysha3](https://github.com/tiran/pysha3)
 
-[ethJsonRPC]()
+[ethJsonRPC](https://github.com/vwvw/ethjsonrpc.git)
+You will need a modified version of ethJsonRPC. You can install it with 
+
+```bash
+pip install git+https://github.com/vwvw/ethjsonrpc.git
+```
+[truffle](http://truffleframework.com/)
 
 To run the script you will first need to launch an instance of testrpc.
 From your truffle-dapp folder launch the following command:
