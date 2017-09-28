@@ -1,7 +1,7 @@
 # Ring Confidential Transaction (RingCT) in an Ethereum Smart Contract
 
 
-### This was part of a research project. Not to be used in production!
+### This is part of a research project. Not to be used in production!
 
 
 This repository contains two part:
@@ -45,6 +45,7 @@ And in another terminal window again from the truffle-dapp folder:
 ```bash
 truffle migrate > contractAddress.txt && cat contractAddress.txt && python3 ../RingCT/offline/ringCT.py
 ```
+The execution of the script is quite long. Especially the verification since it is executed in the EVM, please be patient (~10min).
 
 ## Solidity implementation
 This implementation can be found in the [online folder](./online/). The ecadd (elliptic curve addition), ecmul (elliptic curve multiplication), JtoA (Jacobian to Affine elliptic curve point transformation) as well as dependant methods are taken from the work of [Selma Steinhoff](https://www.linkedin.com/in/selmasteinhoff/?ppe=1).
