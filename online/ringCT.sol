@@ -230,8 +230,11 @@ contract ringCT {
 
 
     // The constant following is used to do ellicptic curve computation
+    //curve parameters secp256k1
     uint256 constant a=0;
+    //uint256 constant b=7;
     uint256 constant p=115792089237316195423570985008687907853269984665640564039457584007908834671663;
+    //uint256 constant n=115792089237316195423570985008687907852837564279074904382605163141518161494337;
     uint256 constant gx=55066263022277343669578718895168534326250603453777594175500187360389116729240;
     uint256 constant gy=32670510020758816978083085130507043184471273380659243275938904335757337482424;
     
@@ -367,6 +370,34 @@ contract ringCT {
         return (R);
     }
 
+    function ecaddmul(uint256[3] P1, uint256 d1, uint256[3] P2, uint256 d2) constant private returns (uint256[3] R) {
+        
+        uint[3] memory P1P2 = ecadd(P1, P2);
+    
+        R[0]=0;
+        R[1]=0;
+        R[2]=0;
+    
+        uint256 i = 0x8000000000000000000000000000000000000000000000000000000000000000;
+        while (i != 0) {
+            R = ecdouble(R);
+            if ((i & d1) != 0) {
+                if ((i & d2) != 0) {
+                    R = ecadd(R, P1P2);
+                } else {
+                    R = ecadd(R, P1);
+                }
+            } else {
+                if ((i & d2) != 0) {
+                    R = ecadd(R, P2);
+                } 
+            }  
+            i=i/2;           
+        }
+        return R;
+    }
+
+
     //point doubling for elliptic curve in jacobian coordinates
     //formula from https://en.wikibooks.org/wiki/Cryptography/Prime_Curve/Jacobian_Coordinates
     function ecdouble(uint256[3] P) private constant returns(uint256[3] R){
@@ -393,13 +424,8 @@ contract ringCT {
 
 
     // function for elliptic curve multiplication in jacobian coordinates using Double-and-add method
-    function ecmul(uint256 d, uint256[2] P_tmp) returns(uint256[3] R) {
-
-        uint256[3] P;
-        P[0]=P_tmp[0];
-        P[1]=P_tmp[1];
-        P[2]=1;
-
+    function ecmul(uint256[3] P, uint256 d) private returns (uint256[3] R) {
+    
         R[0]=0;
         R[1]=0;
         R[2]=0;
@@ -420,7 +446,7 @@ contract ringCT {
             T = ecdouble(T);    //double temporary coordinates
             d=d/2;              //"cut off" last bit
         }
-        return R;
+            return R;
     }
 
     function invmod(uint256 a, uint p) private constant returns(uint256 invA) {
