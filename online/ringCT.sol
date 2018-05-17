@@ -62,7 +62,7 @@ contract ringCT {
     function verifyRangeProofs(uint256[2] Cdim, uint256[2][] CiArray, uint256[2][] L1Array, uint256[] s2Array, uint256[] sArray) returns (bool res) {
         uint256 Cx = Cdim[0];
         uint256 Cy = Cdim[1];
-        uint256 n = sArray.length; //number of range verRangeProofs
+        uint256 n = sArray.length; //number of range verify_range_proofs
         if(Cx != n) {
            LogErrorString("Mismatch in the dimension of the Ci matrix and other matrixes");
            return;
@@ -82,8 +82,8 @@ contract ringCT {
                 L1[j] = L1Array[i * Cy + j];
                 s2[j] = s2Array[i * Cy + j];
             }
-            // function verRangeProofs(uint256[2][] Ci, uint256[2][] L1, uint256[] s2, uint256 s) {
-            res = res && verRangeProofs(Ci, L1, s2, sArray[i]);
+            // function verify_range_proofs(uint256[2][] Ci, uint256[2][] L1, uint256[] s2, uint256 s) {
+            res = res && verify_range_proofs(Ci, L1, s2, sArray[i]);
         }
     }
 
@@ -244,7 +244,7 @@ contract ringCT {
     // L1: TODO
     // s1: random hiding value represented as bytes32
     // s2: random hiding value represented as byzes32
-    function VerSchnorrNonLinkable(uint256[2] P1, uint256[2] P2, uint256[2] L1, bytes32 s1, bytes32 s2) {
+    function verify_schnorr_non_linkable(uint256[2] P1, uint256[2] P2, uint256[2] L1, bytes32 s1, bytes32 s2) {
         uint256 c2 = uint256(sha256(L1));
         uint256[3] memory x = ecmul(c2, P2);
         uint256[2] memory L2 = JtoA(ecadd(ecmul(uint256(s2), [gx,gy]), x));
@@ -260,7 +260,7 @@ contract ringCT {
     // L1: Array of L1 elements for the Schnorr signatures.
     // s2: TODO
     // s: TODO
-    function VerASNL(uint256 P1x, uint256[2][] P1, uint256[2][] P2, uint256[2][] L1, uint256[] s2, uint256 s) returns (bool) {
+    function verifiy_ASNL(uint256 P1x, uint256[2][] P1, uint256[2][] P2, uint256[2][] L1, uint256[] s2, uint256 s) returns (bool) {
         uint256[3] memory LHS = [uint256(0),0,0];
         uint256[3] memory RHS = ecmul(s, [gx, gy]);
         for(uint256 j = 0; j < P1x; j++) {
@@ -303,7 +303,7 @@ contract ringCT {
     // L1: array of elliptic point, first part of range proof
     // s2: array of uint, the s2 value for the range proof (see paper)
     // s: uint need for the range proof, (see paper)
-    function verRangeProofs(uint256[2][] Ci, uint256[2][] L1, uint256[] s2, uint256 s) returns (bool) {
+    function verify_range_proofs(uint256[2][] Ci, uint256[2][] L1, uint256[] s2, uint256 s) returns (bool) {
         GA = [Gx, Gy];
         G = pubKey(GA);
         uint256[3] memory HPow2 = ecmul(uint256(sha256(uint(1))), G.key);
@@ -320,7 +320,7 @@ contract ringCT {
             CiH[i] = JtoA(ecadd(ecmul(1, Ci[i]), negateH2));
         }
         uint256 P1x = Ci.length;
-        return VerASNL(P1x, Ci, CiH, L1, s2, s);
+        return verifiy_ASNL(P1x, Ci, CiH, L1, s2, s);
     }
 
 
