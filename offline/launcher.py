@@ -5,20 +5,42 @@ import time
 import subprocess
 from ethjsonrpc import EthJsonRpc
 
-from .ringCT import to_32_bytes_number, to_int_from_bytes, ecdh_encode, ecdh_decode, create_transaction, crv, g
+from .ringCT import (
+    to_32_bytes_number,
+    to_int_from_bytes,
+    ecdh_encode,
+    ecdh_decode,
+    create_transaction,
+    crv,
+    g,
+)
 
-connection = EthJsonRpc('localhost', 8545)
+connection = EthJsonRpc("localhost", 8545)
 truffle = True
 timeTo = 1600
-filterNames = ['Log Error', 'Print string', 'Print bool', 'Print address', 'Print uint256',
-               'PrintStringAndUint(string,uint256)']
+filterNames = [
+    "Log Error",
+    "Print string",
+    "Print bool",
+    "Print address",
+    "Print uint256",
+    "PrintStringAndUint(string,uint256)",
+]
 filters = []
-to_keccack = ["LogErrorString(string)", "PrintString(string)", "PrintBool(bool)", "PrintAddress(address)",
-              "PrintUint(uint256)", "PrintStringAndUint(string,uint256)"]
+to_keccack = [
+    "LogErrorString(string)",
+    "PrintString(string)",
+    "PrintBool(bool)",
+    "PrintAddress(address)",
+    "PrintUint(uint256)",
+    "PrintStringAndUint(string,uint256)",
+]
 pri = "07ca500a843616b48db3618aea3e9e1174dede9b4e94b95b2170182f632ad47c"
 # noinspection SpellCheckingInspection
-pub = "0462abcca39e6dbe30ade7be2949239311162792bdb257f408ccd9eab65e18bc5bbcf8a3f08675bd792251a23d09a48a870644ba39" \
-      "23996cc5b5ec2d68043f3df3"
+pub = (
+    "0462abcca39e6dbe30ade7be2949239311162792bdb257f408ccd9eab65e18bc5bbcf8a3f08675bd792251a23d09a48a870644ba39"
+    "23996cc5b5ec2d68043f3df3"
+)
 
 
 def prepare_arguments_to_send_ring(pubkey, c0, ss, II):
@@ -35,7 +57,9 @@ def prepare_arguments_to_send_ring(pubkey, c0, ss, II):
     for i in range(0, len(pubkey)):
         for j in range(0, len(pubkey[0])):
             pk = VerifyingKey.from_string(pubkey[i][j], curve=crv).pubkey.point
-            public_keys_aligned.append([to_32_bytes_number(pk.x()), to_32_bytes_number(pk.y())])
+            public_keys_aligned.append(
+                [to_32_bytes_number(pk.x()), to_32_bytes_number(pk.y())]
+            )
 
     ss_aligned = []
     for i in range(0, len(ss)):
@@ -64,9 +88,13 @@ def prepare_arguments_to_send_rg(range_signatures):
     for i in range(0, n):
         s_array.append(to_int_from_bytes(range_signatures[i][1][2]))
         for j in range(0, len(range_signatures[i][0])):
-            CiP = VerifyingKey.from_string(range_signatures[i][0][j], curve=crv).pubkey.point
+            CiP = VerifyingKey.from_string(
+                range_signatures[i][0][j], curve=crv
+            ).pubkey.point
             CiArray.append([CiP.x(), CiP.y()])
-            L1P = VerifyingKey.from_string(range_signatures[i][1][0][j], curve=crv).pubkey.point
+            L1P = VerifyingKey.from_string(
+                range_signatures[i][1][0][j], curve=crv
+            ).pubkey.point
             L1Array.append([L1P.x(), L1P.y()])
             s2_array.append(to_int_from_bytes(range_signatures[i][1][1][j]))
     return CiArray, L1Array, s2_array, s_array
@@ -82,10 +110,21 @@ def display_filters():
         if len(change) > 0:
             for j in range(0, len(change)):
                 if filterNames[i] == "Print uint256":
-                    print(filterNames[i] + " result " + str(j) + ":\n" + str(to_int_from_bytes(
-                        bytes.fromhex(change[j]["data"][2:]))))
+                    print(
+                        filterNames[i]
+                        + " result "
+                        + str(j)
+                        + ":\n"
+                        + str(to_int_from_bytes(bytes.fromhex(change[j]["data"][2:])))
+                    )
                 else:
-                    print(filterNames[i] + " result " + str(j) + ":\n" + str(bytes.fromhex(change[j]["data"][2:])))
+                    print(
+                        filterNames[i]
+                        + " result "
+                        + str(j)
+                        + ":\n"
+                        + str(bytes.fromhex(change[j]["data"][2:]))
+                    )
 
     print("------  All events have been displayed  ------")
 
@@ -98,7 +137,7 @@ def get_contract_address():
     found = False
     i = 0
     while not found and i < len(content):
-        if content[i][0:7] == 'ringCT:':
+        if content[i][0:7] == "ringCT:":
             found = True
             contract_address = content[i][8:50]
         i += 1
@@ -117,9 +156,17 @@ def send(sig, args):
     """
 
     if truffle:
-        results = connection.call_with_transaction(connection.eth_coinbase(), get_contract_address(), sig, args,
-                                                   gas=99999999999, gas_price=1)
-        bash_command = 'curl -X POST 127.0.0.1:8545 -m 3 --data ' + results.replace(" ", "")
+        results = connection.call_with_transaction(
+            connection.eth_coinbase(),
+            get_contract_address(),
+            sig,
+            args,
+            gas=99999999999,
+            gas_price=1,
+        )
+        bash_command = "curl -X POST 127.0.0.1:8545 -m 3 --data " + results.replace(
+            " ", ""
+        )
         process = subprocess.Popen(bash_command.split(), stdout=subprocess.PIPE)
         output, error = process.communicate()
         print(output)
@@ -132,52 +179,80 @@ def send_transaction(message, matrix, I, c, ss, infos, rangeSig):
     # info are not used yet
     if truffle:
         print("------  Preparing to send Transaction   ------")
-        public_keys_aligned, c0, ss_aligned, IIAlligned = prepare_arguments_to_send_ring(matrix, c, ss, I)
+        public_keys_aligned, c0, ss_aligned, IIAlligned = prepare_arguments_to_send_ring(
+            matrix, c, ss, I
+        )
         CiArray, L1Array, s2_array, s_array = prepare_arguments_to_send_rg(rangeSig)
 
         # verify(string message, string info, uint256[2] pkDim, bytes32[2][] pkB, bytes32 c0, uint256[2] ssDim,
         # bytes32[] ssB, uint256 IIX, bytes32[2][] IIB, uint256[2] Cdim, uint256[2][] CiArray, uint256[2][] L1Array,
         # uint256[] s2_array, uint256[] s_array)
-        sig = 'verify(string,string,uint256[2],bytes32[2][],bytes32,uint256[2],bytes32[],uint256,bytes32[2][],' \
-              'uint256[2],uint256[2][],uint256[2][],uint256[],uint256[])'
-        args = [message,infos,
-                [len(matrix), len(matrix[0])], public_keys_aligned,
-                c0,
-                [len(ss), len(ss[0])], ss_aligned,
-                len(I), IIAlligned,
-                [len(rangeSig), len(rangeSig[0][0])], CiArray,
-                L1Array,
-                s2_array,
-                s_array]
+        sig = (
+            "verify(string,string,uint256[2],bytes32[2][],bytes32,uint256[2],bytes32[],uint256,bytes32[2][],"
+            "uint256[2],uint256[2][],uint256[2][],uint256[],uint256[])"
+        )
+        args = [
+            message,
+            infos,
+            [len(matrix), len(matrix[0])],
+            public_keys_aligned,
+            c0,
+            [len(ss), len(ss[0])],
+            ss_aligned,
+            len(I),
+            IIAlligned,
+            [len(rangeSig), len(rangeSig[0][0])],
+            CiArray,
+            L1Array,
+            s2_array,
+            s_array,
+        ]
         send(sig, args)
 
 
 def send_ring(message, pubkey, c0, ss, II):
     if truffle:
         print("------  Preparing to send transaction   ------")
-        public_keys_aligned, c0, ss_aligned, IIAlligned = prepare_arguments_to_send_ring(pubkey, c0, ss, II)
+        public_keys_aligned, c0, ss_aligned, IIAlligned = prepare_arguments_to_send_ring(
+            pubkey, c0, ss, II
+        )
 
-        sig = 'verifySignature(string,uint256,uint256,bytes32[2][],bytes32,uint256,uint256,bytes32[],uint256,' \
-              'bytes32[2][])'
-        args = [message,
-                len(pubkey), len(pubkey[0]), public_keys_aligned,
-                c0,
-                len(ss), len(ss[0]), ss_aligned,
-                len(II), IIAlligned]
+        sig = (
+            "verifySignature(string,uint256,uint256,bytes32[2][],bytes32,uint256,uint256,bytes32[],uint256,"
+            "bytes32[2][])"
+        )
+        args = [
+            message,
+            len(pubkey),
+            len(pubkey[0]),
+            public_keys_aligned,
+            c0,
+            len(ss),
+            len(ss[0]),
+            ss_aligned,
+            len(II),
+            IIAlligned,
+        ]
         send(sig, args)
 
 
 def send_rg(range_signature):
     if truffle:
         print("------  Preparing to send Transaction   ------")
-        CiArray, L1Array, s2_array, s_array = prepare_arguments_to_send_rg(range_signature)
+        CiArray, L1Array, s2_array, s_array = prepare_arguments_to_send_rg(
+            range_signature
+        )
         # verifyRangeProofs(uint256 Cx, uint256 Cy, uint256[2][] CiArray, uint256[2][] L1Array, uint256[] s2_array,
         # uint256[] sArray)
-        sig = 'verifyRangeProofs(uint256,uint256,uint256[2][],uint256[2][],uint256[],uint256[])'
-        args = [len(range_signature), len(range_signature[0][0]), CiArray,
-                L1Array,
-                s2_array,
-                s_array]
+        sig = "verifyRangeProofs(uint256,uint256,uint256[2][],uint256[2][],uint256[],uint256[])"
+        args = [
+            len(range_signature),
+            len(range_signature[0][0]),
+            CiArray,
+            L1Array,
+            s2_array,
+            s_array,
+        ]
         send(sig, args)
 
 
@@ -185,37 +260,64 @@ def sendASNL(P1, P2, L1, s2, s):
     if truffle:
         print("------  Preparing to send ASNL   ------")
         P1x = len(P1)
-        P1A = [[VerifyingKey.from_string(x, curve=crv).pubkey.point.x(),
-                VerifyingKey.from_string(x, curve=crv).pubkey.point.y()] for x in P1]
-        P2A = [[VerifyingKey.from_string(x, curve=crv).pubkey.point.x(),
-                VerifyingKey.from_string(x, curve=crv).pubkey.point.y()] for x in P2]
-        L1A = [[VerifyingKey.from_string(x, curve=crv).pubkey.point.x(),
-                VerifyingKey.from_string(x, curve=crv).pubkey.point.y()] for x in L1]
+        P1A = [
+            [
+                VerifyingKey.from_string(x, curve=crv).pubkey.point.x(),
+                VerifyingKey.from_string(x, curve=crv).pubkey.point.y(),
+            ]
+            for x in P1
+        ]
+        P2A = [
+            [
+                VerifyingKey.from_string(x, curve=crv).pubkey.point.x(),
+                VerifyingKey.from_string(x, curve=crv).pubkey.point.y(),
+            ]
+            for x in P2
+        ]
+        L1A = [
+            [
+                VerifyingKey.from_string(x, curve=crv).pubkey.point.x(),
+                VerifyingKey.from_string(x, curve=crv).pubkey.point.y(),
+            ]
+            for x in L1
+        ]
         s2a = [to_int_from_bytes(x) for x in s2]
 
-        sig = 'verify_ASNL(uint256,uint256[2][],uint256[2][],uint256[2][],uint256[],uint256)'
-        args =[P1x, P1A, P2A, L1A, s2a, to_int_from_bytes(s)]
+        sig = "verify_ASNL(uint256,uint256[2][],uint256[2][],uint256[2][],uint256[],uint256)"
+        args = [P1x, P1A, P2A, L1A, s2a, to_int_from_bytes(s)]
         send(sig, args)
 
 
 def send_verify_range_signatures(P1, L1, s2, s):
     if truffle:
         print("------  Preparing to send VerRang   ------")
-        P1A = [[VerifyingKey.from_string(x, curve=crv).pubkey.point.x(),
-                VerifyingKey.from_string(x, curve=crv).pubkey.point.y()] for x in P1]
-        L1A = [[VerifyingKey.from_string(x, curve=crv).pubkey.point.x(),
-                VerifyingKey.from_string(x, curve=crv).pubkey.point.y()] for x in L1]
+        P1A = [
+            [
+                VerifyingKey.from_string(x, curve=crv).pubkey.point.x(),
+                VerifyingKey.from_string(x, curve=crv).pubkey.point.y(),
+            ]
+            for x in P1
+        ]
+        L1A = [
+            [
+                VerifyingKey.from_string(x, curve=crv).pubkey.point.x(),
+                VerifyingKey.from_string(x, curve=crv).pubkey.point.y(),
+            ]
+            for x in L1
+        ]
         s2A = [to_int_from_bytes(x) for x in s2]
-        sig = 'verify_range_proofs(uint256[2][],uint256[2][],uint256[],uint256)'
-        args =[P1A, L1A, s2A, to_int_from_bytes(s)]
+        sig = "verify_range_proofs(uint256[2][],uint256[2][],uint256[],uint256)"
+        args = [P1A, L1A, s2A, to_int_from_bytes(s)]
         send(sig, args)
 
 
 def test():
     print("------   Entering the first test case.  ------")
     for i in range(0, 10):
-        x = random.randrange(2**256)
-        assert x == to_int_from_bytes(to_32_bytes_number(x)), "bytes <-> int conversion failed, x = {}".format(x)
+        x = random.randrange(2 ** 256)
+        assert x == to_int_from_bytes(
+            to_32_bytes_number(x)
+        ), "bytes <-> int conversion failed, x = {}".format(x)
 
     print("------  Entering the second test case.  ------")
 
@@ -223,10 +325,14 @@ def test():
         x = random.randrange(crv.order)
         y = random.randrange(crv.order)
         new_mask, new_amount, send_public_key = ecdh_encode(
-            to_32_bytes_number(x), to_32_bytes_number(y), bytes.fromhex(pub))
-        new_x, new_y = ecdh_decode(new_mask, new_amount, send_public_key, bytes.fromhex(pri))
-        assert to_int_from_bytes(new_x) == x and to_int_from_bytes(new_y) == y,\
-            "ECDH failed, x = {}, y = {}".format(x, y)
+            to_32_bytes_number(x), to_32_bytes_number(y), bytes.fromhex(pub)
+        )
+        new_x, new_y = ecdh_decode(
+            new_mask, new_amount, send_public_key, bytes.fromhex(pri)
+        )
+        assert (
+            to_int_from_bytes(new_x) == x and to_int_from_bytes(new_y) == y
+        ), "ECDH failed, x = {}, y = {}".format(x, y)
 
     print("------   All test passed. Well done !   ------")
 
@@ -237,26 +343,38 @@ def main():
         for i in range(0, len(to_keccack)):
             keccack.append(connection.web3_sha3(to_keccack[i]))
         for i in range(0, len(keccack)):
-            filters.append(connection.eth_newFilter(from_block='earliest',
-                                                    address=get_contract_address(),
-                                                    topics=[keccack[i]]))
+            filters.append(
+                connection.eth_newFilter(
+                    from_block="earliest",
+                    address=get_contract_address(),
+                    topics=[keccack[i]],
+                )
+            )
 
     # sample private and public keys used for testing
     # noinspection SpellCheckingInspection
     pri4 = "79d3372ffd4278affd69313355d38c6d90d489e4ab0bbbef9589d7cc9559ab6d"
     pri5 = "00dff8928e99bda9bb83a377e09c8bf5d110c414fa65d771b7b84797709c7dd0b1"
     # noinspection SpellCheckingInspection
-    pub2 = "040ccad48919d8f6a206a1ac7113c22db62aa744a0700762b70aa0284d474c00203029637ce8e84f6551fd92a0db8e1f964ff13aa" \
-           "992e4cbfd1fb8fa33c6e6c53c"
+    pub2 = (
+        "040ccad48919d8f6a206a1ac7113c22db62aa744a0700762b70aa0284d474c00203029637ce8e84f6551fd92a0db8e1f964ff13aa"
+        "992e4cbfd1fb8fa33c6e6c53c"
+    )
     # noinspection SpellCheckingInspection
-    pub3 = "049f742f925b554e2dc02e2da5cb9663ef810e9eefb30818b3c12bc26afb8dd7ba3461c0f7d2b997bf455973af308a71ed34ae415" \
-           "cfc946de84db3961db522e5d2"
+    pub3 = (
+        "049f742f925b554e2dc02e2da5cb9663ef810e9eefb30818b3c12bc26afb8dd7ba3461c0f7d2b997bf455973af308a71ed34ae415"
+        "cfc946de84db3961db522e5d2"
+    )
     # noinspection SpellCheckingInspection
-    pub4 = "04ef36c6d140e7970cc54c08e0e5d3173059ee6276dd0de99e09d10c49bd49e63c44e0a2e7180fff5e3e8a549027b8a37bc3a9437" \
-           "374ef1b7a05040b244a7bccc5"
+    pub4 = (
+        "04ef36c6d140e7970cc54c08e0e5d3173059ee6276dd0de99e09d10c49bd49e63c44e0a2e7180fff5e3e8a549027b8a37bc3a9437"
+        "374ef1b7a05040b244a7bccc5"
+    )
     # noinspection SpellCheckingInspection
-    pub5 = "04da11a42320ae495014dd9c1c51d43d6c55ca51b7fe9ae3e1258e927e97f48be4e7a4474c067154fdaa1c5b26dee555c3e649337" \
-           "605510cf9e1d5c1e657352e9c"
+    pub5 = (
+        "04da11a42320ae495014dd9c1c51d43d6c55ca51b7fe9ae3e1258e927e97f48be4e7a4474c067154fdaa1c5b26dee555c3e649337"
+        "605510cf9e1d5c1e657352e9c"
+    )
     # createTransaction(bytes.fromhex(pri), bytes.fromhex(pub), [bytes.fromhex(pub2), bytes.fromhex(pub3)], [1, 2], 2)
 
     in_amounts = [3, 4]
@@ -269,10 +387,13 @@ def main():
 
     out_amount = [1, 6]
     message = "hello"
-    out_public_key = [VerifyingKey.from_string(bytes.fromhex(pub)[1:], curve=crv).to_string(),
-                      VerifyingKey.from_string(bytes.fromhex(pub5)[1:], curve=crv).to_string()]
-    matrix, destinations, destinations_commitment, I, c, ss, info, range_signatures =\
-        create_transaction(message, in_pk, in_sk, in_amounts, out_public_key, out_amount, 2)
+    out_public_key = [
+        VerifyingKey.from_string(bytes.fromhex(pub)[1:], curve=crv).to_string(),
+        VerifyingKey.from_string(bytes.fromhex(pub5)[1:], curve=crv).to_string(),
+    ]
+    matrix, destinations, destinations_commitment, I, c, ss, info, range_signatures = create_transaction(
+        message, in_pk, in_sk, in_amounts, out_public_key, out_amount, 2
+    )
 
     send_transaction(message, matrix, I, c, ss, "", range_signatures)
 
